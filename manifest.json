@@ -1,0 +1,51 @@
+{
+  "id": "curfew-manager",
+  "name": "Curfew Manager",
+  "version": "1.0.0",
+  "description": "Adults set per-child curfew times by weekday and weekend. Kids see their schedule and can request one-time exceptions. Parents approve or deny in-app.",
+  "entrypoint": "index.html",
+  "runtime": "static",
+  "category": "family",
+  "tags": [
+    "kids",
+    "curfew",
+    "parenting",
+    "permissions",
+    "schedule"
+  ],
+  "data_access": {
+    "reads": [
+      "family.members"
+    ],
+    "writes": []
+  },
+  "permissions": {
+    "default_audience": "everyone",
+    "requires_approval": false
+  },
+  "storage": "db",
+  "publishes": [
+    "curfew.exception_requested",
+    "curfew.exception_approved",
+    "curfew.exception_denied"
+  ],
+  "alert_on": [
+    "curfew.exception_requested",
+    "curfew.exception_approved",
+    "curfew.exception_denied"
+  ],
+  "nav": { "label": "Curfew" },
+  "widget": {
+    "label": "Curfew",
+    "size": "small"
+  },
+  "resource_limits": {
+    "max_db_bytes": 52428800
+  },
+  "icon": "🌙",
+  "ai_access": {
+    "allowed": true,
+    "mode": "read",
+    "db_exports": ["curfew_schedules", "pending_exceptions"]
+  }
+}

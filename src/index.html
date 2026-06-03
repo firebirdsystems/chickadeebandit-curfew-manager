@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Curfew Manager</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:           var(--hub-bg, #f9fafb);
+      --card:         var(--hub-surface, #ffffff);
+      --border:       var(--hub-border, #e5e7eb);
+      --text:         var(--hub-text, #111827);
+      --muted:        var(--hub-text-muted, #6b7280);
+      --accent:       var(--hub-primary, #111827);
+      --accent-fg:    var(--hub-primary-fg, #ffffff);
+      --accent-hover: var(--hub-primary-hover, #374151);
+      --accent-light: #f3f4f6;
+      --green:        #16a34a; --green-light: #dcfce7;
+      --amber:        #d97706; --amber-light: #fef3c7;
+      --red:          #dc2626; --red-light: #fee2e2;
+      --indigo:       #4f46e5; --indigo-light: #eef2ff;
+      --radius:       var(--hub-radius, 0.5rem);
+      --shadow:       0 1px 3px rgba(0,0,0,.07);
+    }
+
+    body {
+      font-family: var(--hub-font, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      font-size: var(--hub-font-size, 15px);
+      line-height: 1.5;
+    }
+
+    .app { max-width: 600px; margin: 0 auto; padding: 16px; }
+
+    /* ── Header ───────────────────────────────────────────── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      padding: 16px 20px;
+      background: var(--accent);
+      border-radius: var(--radius);
+      color: white;
+    }
+    header h1 { font-size: 1.2rem; font-weight: 700; }
+    header .sub { font-size: 0.8rem; opacity: .75; margin-top: 2px; }
+
+    /* ── Buttons ──────────────────────────────────────────── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: opacity .15s;
+    }
+    .btn:disabled { opacity: .5; cursor: default; }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover:not(:disabled) { opacity: .88; }
+    .btn-ghost { background: transparent; color: var(--muted); border: 1.5px solid var(--border); }
+    .btn-ghost:hover:not(:disabled) { border-color: var(--text); color: var(--text); }
+    .btn-danger { background: var(--red); color: white; }
+    .btn-danger:hover:not(:disabled) { opacity: .88; }
+    .btn-success { background: var(--green); color: white; }
+    .btn-success:hover:not(:disabled) { opacity: .88; }
+    .btn-sm { padding: 5px 12px; font-size: 0.8rem; }
+    .btn-header {
+      background: rgba(255,255,255,.15);
+      color: white;
+      border: 1.5px solid rgba(255,255,255,.3);
+    }
+    .btn-header:hover:not(:disabled) { background: rgba(255,255,255,.25); }
+
+    /* ── Tabs ─────────────────────────────────────────────── */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      background: var(--border);
+      border-radius: 10px;
+      padding: 3px;
+      margin-bottom: 16px;
+    }
+    .tab {
+      flex: 1;
+      padding: 7px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--muted);
+      background: transparent;
+      transition: all .15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .tab.active { background: white; color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+    .tab-badge {
+      background: var(--amber);
+      color: white;
+      border-radius: 20px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 1px 6px;
+      min-width: 18px;
+      text-align: center;
+    }
+
+    /* ── Cards ────────────────────────────────────────────── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      margin-bottom: 12px;
+    }
+    .request-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      box-shadow: var(--shadow);
+      transition: border-color .15s;
+    }
+    .request-card:hover { border-color: var(--accent); }
+    .request-card.needs-action { border-color: var(--amber); background: #fffbeb; }
+    .request-main { flex: 1; min-width: 0; }
+    .request-title {
+      font-weight: 600;
+      font-size: 1rem;
+      margin-bottom: 3px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .request-meta { font-size: 0.8rem; color: var(--muted); margin-bottom: 2px; }
+    .request-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 5px;
+      flex-shrink: 0;
+    }
+    .action-needed { font-size: 0.72rem; font-weight: 600; color: var(--amber); }
+
+    /* ── Status badges ────────────────────────────────────── */
+    .status-badge {
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 20px;
+      white-space: nowrap;
+    }
+    .status-pending  { background: var(--amber-light);  color: var(--amber); }
+    .status-approved { background: var(--green-light);  color: var(--green); }
+    .status-denied   { background: var(--red-light);    color: var(--red); }
+
+    /* ── Schedule cards ───────────────────────────────────── */
+    .child-schedule-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 10px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .child-schedule-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .child-schedule-header .name { font-weight: 600; font-size: 1rem; flex: 1; }
+    .schedule-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      gap: 12px;
+    }
+    .schedule-row:last-child { border-bottom: none; }
+    .schedule-label { font-size: 0.9rem; font-weight: 500; }
+    .schedule-time  { font-size: 0.9rem; color: var(--muted); }
+    .schedule-time.set { color: var(--text); font-weight: 600; }
+
+    /* ── Avatar ───────────────────────────────────────────── */
+    .avatar {
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      color: white;
+      flex-shrink: 0;
+    }
+    .avatar.md { width: 36px; height: 36px; font-size: 1rem; }
+    .avatar.sm { width: 26px; height: 26px; font-size: 0.75rem; }
+    .avatar.xs { width: 20px; height: 20px; font-size: 0.65rem; }
+
+    /* ── Curfew summary banner (child view) ───────────────── */
+    .curfew-banner {
+      background: var(--indigo-light);
+      border: 1px solid var(--indigo);
+      border-radius: var(--radius);
+      padding: 16px 18px;
+      margin-bottom: 16px;
+    }
+    .curfew-banner .label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: var(--indigo);
+      margin-bottom: 8px;
+    }
+    .curfew-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .curfew-slot { }
+    .curfew-slot .day  { font-size: 0.78rem; color: var(--muted); margin-bottom: 2px; }
+    .curfew-slot .time { font-size: 1.2rem; font-weight: 700; color: var(--indigo); }
+    .curfew-slot .none { font-size: 0.9rem; color: var(--muted); font-style: italic; }
+
+    /* ── Modal ────────────────────────────────────────────── */
+    .modal-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.45);
+      display: flex; align-items: flex-end; justify-content: center;
+      z-index: 100;
+    }
+    @media (min-width: 480px) {
+      .modal-backdrop { align-items: center; padding: 20px; }
+    }
+    .modal {
+      background: white;
+      border-radius: var(--radius) var(--radius) 0 0;
+      width: 100%;
+      max-width: 500px;
+      padding: 24px;
+      max-height: 92vh;
+      overflow-y: auto;
+    }
+    @media (min-width: 480px) { .modal { border-radius: var(--radius); } }
+    .modal h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 16px; }
+
+    /* ── Form ─────────────────────────────────────────────── */
+    .form-group { margin-bottom: 14px; }
+    .form-group label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--muted);
+      margin-bottom: 5px;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      padding: 9px 12px;
+      font-size: 0.95rem;
+      font-family: inherit;
+      outline: none;
+      transition: border-color .15s;
+      background: white;
+    }
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus { border-color: var(--accent); }
+    .form-group textarea { resize: vertical; min-height: 72px; }
+    .form-group .row { display: flex; gap: 10px; }
+    .form-group .row > * { flex: 1; }
+    .form-hint { font-size: 0.78rem; color: var(--muted); margin-top: 4px; }
+
+    .form-notice {
+      background: var(--amber-light);
+      color: var(--amber);
+      border-radius: 8px;
+      padding: 9px 12px;
+      font-size: 0.82rem;
+      font-weight: 500;
+      margin-bottom: 14px;
+    }
+
+    /* ── Modal actions ────────────────────────────────────── */
+    .modal-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+    .modal-actions .btn { flex: 1; justify-content: center; min-width: 100px; }
+
+    /* ── Detail fields ────────────────────────────────────── */
+    .detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .detail-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: var(--muted);
+      margin-bottom: 3px;
+    }
+    .detail-value { font-size: 0.92rem; font-weight: 500; }
+    .detail-member { display: flex; align-items: center; gap: 6px; }
+
+    .review-box {
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 0.88rem;
+      margin-bottom: 4px;
+    }
+    .review-box.approved { background: var(--green-light); color: #14532d; }
+    .review-box.denied   { background: var(--red-light);   color: #7f1d1d; }
+    .review-box .by { font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
+
+    /* ── Misc ─────────────────────────────────────────────── */
+    .empty { text-align: center; padding: 36px 16px; color: var(--muted); font-size: 0.9rem; }
+    .loading { text-align: center; padding: 40px; color: var(--muted); }
+    .section-title {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-bottom: 8px;
+    }
+    .divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+  </style>
+  <base href="/run/curfew-manager/" />
+</head>
+<body>
+<div class="app">
+  <div id="root"><div class="loading">Loading…</div></div>
+</div>
+
+<script type="module">
+import { memberColor, initial, esc, isAdult, hubConfirm } from "/hub-sdk.js";
+import { formatTime, formatDate, getDayType, getCurfewForDate, exceedsCurfew, STATUS_INFO } from "./logic.js";
+
+const CONTEXT    = window.__CONTEXT_URL    ?? "";
+const DB         = window.__DB_URL         ?? "";
+const APP_ID     = window.__APP_ID         ?? "curfew-manager";
+const ME         = window.__CURRENT_MEMBER ?? null;
+const EVENTS_URL = window.__EVENTS_URL     ?? "/api/events";
+
+// ─── State ────────────────────────────────────────────────────────────────────
+let members   = [];
+let memberMap = new Map();
+let curfews   = [];
+let requests  = [];
+let activeTab = "requests"; // adult: "requests" | "schedule" | child: irrelevant
+
+// ─── DB helper ────────────────────────────────────────────────────────────────
+async function db(sql, params = []) {
+  if (!DB) return { rows: [] };
+  const res = await fetch(DB, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sql, params }),
+  });
+  return res.json();
+}
+
+// ─── Load ──────────────────────────────────────────────────────────────────────
+async function loadMembers() {
+  if (!CONTEXT) {
+    members = [
+      { id: "demo-1", name: "Alex",   role: "adult" },
+      { id: "demo-2", name: "Sam",    role: "adult" },
+      { id: "demo-3", name: "Jordan", role: "child" },
+      { id: "demo-4", name: "Casey",  role: "child" },
+    ];
+    memberMap = new Map(members.map(m => [m.id, m]));
+    return;
+  }
+  try {
+    const res = await fetch(`${CONTEXT}?keys=family.members`);
+    members = ((await res.json())["family.members"]) ?? [];
+  } catch { members = []; }
+  memberMap = new Map(members.map(m => [m.id, m]));
+}
+
+async function loadCurfews() {
+  if (!DB) {
+    curfews = [
+      { member_id: "demo-3", day_type: "weekday", curfew_time: "21:00" },
+      { member_id: "demo-3", day_type: "weekend", curfew_time: "22:30" },
+      { member_id: "demo-4", day_type: "weekday", curfew_time: "20:30" },
+    ];
+    return;
+  }
+  const { rows } = await db(`SELECT member_id, day_type, curfew_time FROM curfews`);
+  curfews = rows ?? [];
+}
+
+async function loadRequests() {
+  if (!DB || !ME) return;
+  let rows;
+  if (isAdult(ME)) {
+    ({ rows } = await db(`
+      SELECT * FROM exception_requests
+      WHERE status != 'denied' OR date >= date('now', '-30 days')
+      ORDER BY
+        CASE status WHEN 'pending' THEN 0 WHEN 'approved' THEN 1 ELSE 2 END,
+        date ASC, requested_time ASC
+    `));
+  } else {
+    ({ rows } = await db(`
+      SELECT * FROM exception_requests
+      WHERE member_id = ?
+      ORDER BY
+        CASE status WHEN 'pending' THEN 0 WHEN 'approved' THEN 1 ELSE 2 END,
+        date ASC
+    `, [ME.id]));
+  }
+  requests = rows ?? [];
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function mc(id)         { return memberColor(id, members); }
+function memberName(id) { return memberMap.get(id)?.name ?? "Unknown"; }
+function kids()         { return members.filter(m => !isAdult(m)); }
+
+function statusHtml(status) {
+  const { cls, label } = STATUS_INFO[status] ?? STATUS_INFO.pending;
+  return `<span class="status-badge ${cls}">${label}</span>`;
+}
+
+function curfewFor(memberId, dayType) {
+  return curfews.find(c => c.member_id === memberId && c.day_type === dayType)?.curfew_time ?? null;
+}
+
+// ─── Notifications ─────────────────────────────────────────────────────────────
+async function notify(title, body, audience = null) {
+  const payload = { title, body, url: `/run/${APP_ID}` };
+  if (audience) payload.audience = audience;
+  await fetch("/api/notifications/send", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  }).catch(() => {});
+}
+
+async function publishEvent(type, subjectId, payload = {}) {
+  await fetch(EVENTS_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      source_app_id: APP_ID,
+      type,
+      subject_id: subjectId,
+      payload,
+    }),
+  }).catch(() => {});
+}
+
+// ─── Actions ──────────────────────────────────────────────────────────────────
+async function saveCurfew(memberId, dayType, curfewTime) {
+  const now = new Date().toISOString();
+  if (curfewTime) {
+    await db(`
+      INSERT INTO curfews (member_id, day_type, curfew_time, updated_at)
+      VALUES (?, ?, ?, ?)
+      ON CONFLICT (household_id, member_id, day_type)
+      DO UPDATE SET curfew_time = excluded.curfew_time, updated_at = excluded.updated_at
+    `, [memberId, dayType, curfewTime, now]);
+    const idx = curfews.findIndex(c => c.member_id === memberId && c.day_type === dayType);
+    if (idx >= 0) curfews[idx] = { member_id: memberId, day_type: dayType, curfew_time: curfewTime };
+    else curfews.push({ member_id: memberId, day_type: dayType, curfew_time: curfewTime });
+  } else {
+    await db(`DELETE FROM curfews WHERE member_id = ? AND day_type = ?`, [memberId, dayType]);
+    curfews = curfews.filter(c => !(c.member_id === memberId && c.day_type === dayType));
+  }
+}
+
+async function submitExceptionRequest(fields) {
+  const id  = crypto.randomUUID();
+  const now = new Date().toISOString();
+  await db(`
+    INSERT INTO exception_requests
+      (id, member_id, date, requested_time, reason, status, created_at)
+    VALUES (?, ?, ?, ?, ?, 'pending', ?)
+  `, [id, ME.id, fields.date, fields.requested_time, fields.reason ?? "", now]);
+
+  requests = [{
+    id, member_id: ME.id, date: fields.date, requested_time: fields.requested_time,
+    reason: fields.reason ?? "", status: "pending",
+    reviewed_by: null, reviewed_at: null, review_note: null, created_at: now,
+  }, ...requests];
+  closeModal();
+  render();
+
+  const dateLabel = formatDate(fields.date);
+  const timeLabel = formatTime(fields.requested_time);
+  Promise.all([
+    notify(
+      `🌙 ${ME.name} is requesting a curfew exception`,
+      `${dateLabel} until ${timeLabel}${fields.reason ? ` — ${fields.reason}` : ""} — open Curfew Manager to review`,
+      "adults",
+    ),
+    fetch("/api/activity", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: "message_posted",
+        actor: ME.name,
+        description: `${ME.name} requested a curfew exception for ${dateLabel} until ${timeLabel}`,
+        metadata: { deepLink: { appId: APP_ID, params: { requestId: id } } },
+      }),
+    }).catch(() => {}),
+    publishEvent("curfew.exception_requested", id, {
+      member_id:      ME.id,
+      member_name:    ME.name,
+      date:           fields.date,
+      requested_time: fields.requested_time,
+    }),
+  ]).catch(() => {});
+}
+
+async function approveRequest(reqId, note) {
+  const req = requests.find(r => r.id === reqId);
+  if (!req || req.status !== "pending") return;
+  const now = new Date().toISOString();
+  await db(`
+    UPDATE exception_requests
+    SET status = 'approved', reviewed_by = ?, reviewed_at = ?, review_note = ?
+    WHERE id = ?
+  `, [ME.id, now, note ?? "", reqId]);
+
+  const idx = requests.findIndex(r => r.id === reqId);
+  if (idx !== -1) requests[idx] = { ...requests[idx], status: "approved", reviewed_by: ME.id, reviewed_at: now, review_note: note ?? "" };
+  closeModal();
+  render();
+
+  const dateLabel = formatDate(req.date);
+  const timeLabel = formatTime(req.requested_time);
+  const childName = memberName(req.member_id);
+  Promise.all([
+    notify(
+      `✅ Curfew exception approved`,
+      `${childName}'s request for ${dateLabel} until ${timeLabel} was approved by ${ME.name}${note ? ` — ${note}` : ""}`,
+    ),
+    fetch("/api/activity", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: "message_posted",
+        actor: ME.name,
+        description: `${ME.name} approved ${childName}'s curfew exception for ${dateLabel}`,
+        metadata: { deepLink: { appId: APP_ID, params: { requestId: reqId } } },
+      }),
+    }).catch(() => {}),
+    publishEvent("curfew.exception_approved", reqId, {
+      member_id:   req.member_id,
+      member_name: childName,
+      date:        req.date,
+      approved_by: ME.name,
+    }),
+  ]).catch(() => {});
+}
+
+async function denyRequest(reqId, note) {
+  const req = requests.find(r => r.id === reqId);
+  if (!req || req.status !== "pending") return;
+  const now = new Date().toISOString();
+  await db(`
+    UPDATE exception_requests
+    SET status = 'denied', reviewed_by = ?, reviewed_at = ?, review_note = ?
+    WHERE id = ?
+  `, [ME.id, now, note ?? "", reqId]);
+
+  const idx = requests.findIndex(r => r.id === reqId);
+  if (idx !== -1) requests[idx] = { ...requests[idx], status: "denied", reviewed_by: ME.id, reviewed_at: now, review_note: note ?? "" };
+  closeModal();
+  render();
+
+  const dateLabel = formatDate(req.date);
+  const childName = memberName(req.member_id);
+  Promise.all([
+    notify(
+      `❌ Curfew exception denied`,
+      `${childName}'s request for ${dateLabel} was denied by ${ME.name}${note ? ` — ${note}` : ""}`,
+    ),
+    fetch("/api/activity", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: "message_posted",
+        actor: ME.name,
+        description: `${ME.name} denied ${childName}'s curfew exception for ${dateLabel}`,
+        metadata: { deepLink: { appId: APP_ID, params: { requestId: reqId } } },
+      }),
+    }).catch(() => {}),
+    publishEvent("curfew.exception_denied", reqId, {
+      member_id:   req.member_id,
+      member_name: childName,
+      date:        req.date,
+      denied_by:   ME.name,
+    }),
+  ]).catch(() => {});
+}
+
+// ─── Modal ─────────────────────────────────────────────────────────────────────
+let modalEl = null;
+function openModal(html) {
+  closeModal();
+  modalEl = document.createElement("div");
+  modalEl.className = "modal-backdrop";
+  modalEl.innerHTML = `<div class="modal">${html}</div>`;
+  modalEl.addEventListener("click", e => { if (e.target === modalEl) closeModal(); });
+  document.body.appendChild(modalEl);
+}
+function closeModal() { modalEl?.remove(); modalEl = null; }
+
+// ─── Edit curfew modal ─────────────────────────────────────────────────────────
+function openEditCurfewModal(memberId) {
+  const member   = memberMap.get(memberId);
+  const weekday  = curfewFor(memberId, "weekday") ?? "";
+  const weekend  = curfewFor(memberId, "weekend") ?? "";
+
+  openModal(`
+    <h3>Set Curfew for ${esc(member?.name ?? "Child")}</h3>
+    <div class="form-group">
+      <label>Weekdays (Mon – Fri)</label>
+      <input id="f-weekday" type="time" value="${esc(weekday)}" />
+      <div class="form-hint">Leave blank for no curfew on weekdays.</div>
+    </div>
+    <div class="form-group">
+      <label>Weekends (Sat – Sun)</label>
+      <input id="f-weekend" type="time" value="${esc(weekend)}" />
+      <div class="form-hint">Leave blank for no curfew on weekends.</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitCurfewModal('${memberId}')">Save</button>
+    </div>
+  `);
+}
+
+window.submitCurfewModal = async function(memberId) {
+  const weekday = document.getElementById("f-weekday").value.trim();
+  const weekend = document.getElementById("f-weekend").value.trim();
+
+  const btn = modalEl?.querySelector('.modal-actions .btn-primary');
+  if (btn) { btn.disabled = true; btn.textContent = "Saving…"; }
+
+  try {
+    await Promise.all([
+      saveCurfew(memberId, "weekday", weekday || null),
+      saveCurfew(memberId, "weekend", weekend || null),
+    ]);
+    closeModal();
+    render();
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = "Save"; }
+    throw e;
+  }
+};
+
+// ─── Exception request form ────────────────────────────────────────────────────
+function openExceptionRequestModal() {
+  openModal(`
+    <h3>Request a Curfew Exception</h3>
+    <div class="form-group">
+      <label>Date</label>
+      <input id="f-date" type="date" min="${new Date().toISOString().slice(0,10)}" autofocus />
+    </div>
+    <div class="form-group">
+      <label>Stay out until</label>
+      <input id="f-time" type="time" />
+    </div>
+    <div class="form-group">
+      <label>Reason <span style="font-weight:400;text-transform:none">(optional)</span></label>
+      <textarea id="f-reason" rows="2" placeholder="Where are you going, who with…"></textarea>
+    </div>
+    <div id="f-curfew-hint" style="display:none" class="form-notice"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitExceptionModal()">Submit Request</button>
+    </div>
+  `);
+
+  document.getElementById("f-date").addEventListener("change", updateCurfewHint);
+  document.getElementById("f-time").addEventListener("change", updateCurfewHint);
+}
+
+function updateCurfewHint() {
+  const dateVal = document.getElementById("f-date")?.value;
+  const timeVal = document.getElementById("f-time")?.value;
+  const hint    = document.getElementById("f-curfew-hint");
+  if (!hint) return;
+  if (dateVal && ME) {
+    const normal = getCurfewForDate(curfews, ME.id, dateVal);
+    if (normal) {
+      const timeStr = formatTime(normal);
+      const over    = timeVal && exceedsCurfew(normal, timeVal);
+      hint.style.display = "block";
+      hint.textContent = over
+        ? `Your curfew for ${getDayType(dateVal) === "weekend" ? "weekends" : "weekdays"} is ${timeStr}. Your request extends past curfew.`
+        : `Your curfew for ${getDayType(dateVal) === "weekend" ? "weekends" : "weekdays"} is ${timeStr}.`;
+    } else {
+      hint.style.display = "none";
+    }
+  } else {
+    hint.style.display = "none";
+  }
+}
+
+window.submitExceptionModal = async function() {
+  const date           = document.getElementById("f-date").value.trim();
+  const requested_time = document.getElementById("f-time").value.trim();
+  const reason         = document.getElementById("f-reason").value.trim();
+
+  if (!date)           { document.getElementById("f-date").focus(); return; }
+  if (!requested_time) { document.getElementById("f-time").focus(); return; }
+
+  const btn = modalEl?.querySelector('.modal-actions .btn-primary');
+  if (btn) { btn.disabled = true; btn.textContent = "Submitting…"; }
+
+  try {
+    await submitExceptionRequest({ date, requested_time, reason });
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = "Submit Request"; }
+    throw e;
+  }
+};
+
+// ─── Decision modal ────────────────────────────────────────────────────────────
+function openDecisionModal(req, decision) {
+  const isApprove = decision === "approve";
+  const dateLabel = formatDate(req.date);
+  const timeLabel = formatTime(req.requested_time);
+  const childName = memberName(req.member_id);
+
+  openModal(`
+    <h3>${isApprove ? "✅ Approve Exception" : "❌ Deny Exception"}</h3>
+    <div style="margin-bottom:14px">
+      <div style="font-weight:600">${esc(childName)}</div>
+      <div style="font-size:.85rem;color:var(--muted);margin-top:2px">
+        ${esc(dateLabel)} until ${esc(timeLabel)}
+        ${req.reason ? `<br><em>${esc(req.reason)}</em>` : ""}
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Note <span style="font-weight:400;text-transform:none">(optional)</span></label>
+      <input id="d-note" type="text"
+        placeholder="${isApprove ? "Be home right at that time, text when you arrive…" : "Why not this time…"}"
+        autofocus />
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn ${isApprove ? "btn-success" : "btn-danger"}"
+        onclick="submitDecision('${req.id}', '${decision}')">
+        ${isApprove ? "Approve" : "Deny"}
+      </button>
+    </div>
+  `);
+}
+
+window.submitDecision = async function(reqId, decision) {
+  const note = document.getElementById("d-note").value.trim();
+  const btn  = modalEl?.querySelector('.modal-actions button:not(.btn-ghost)');
+  if (btn) { btn.disabled = true; btn.textContent = "Saving…"; }
+  if (decision === "approve") await approveRequest(reqId, note);
+  else                        await denyRequest(reqId, note);
+};
+
+// ─── Detail modal ──────────────────────────────────────────────────────────────
+function openDetailModal(req) {
+  const child       = memberMap.get(req.member_id);
+  const reviewer    = req.reviewed_by ? memberMap.get(req.reviewed_by) : null;
+  const meIsAdult   = isAdult(ME);
+  const isMyRequest = ME?.id === req.member_id;
+  const canDecide   = req.status === "pending" && meIsAdult;
+
+  const dateLabel = formatDate(req.date);
+  const timeLabel = formatTime(req.requested_time);
+  const dayType   = getDayType(req.date);
+  const normal    = getCurfewForDate(curfews, req.member_id, req.date);
+
+  const reviewBlock = (req.status === "approved" || req.status === "denied")
+    ? `<div class="review-box ${req.status}">
+        ${req.review_note ? `<div>${esc(req.review_note)}</div>` : ""}
+        <div class="by">
+          — ${esc(reviewer?.name ?? "A parent")},
+          ${req.reviewed_at ? new Date(req.reviewed_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : ""}
+        </div>
+       </div>`
+    : "";
+
+  openModal(`
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px">
+      <div>
+        <h3 style="margin-bottom:6px">Exception Request</h3>
+        ${statusHtml(req.status)}
+      </div>
+    </div>
+
+    <div class="detail-grid">
+      <div>
+        <div class="detail-label">Requested by</div>
+        <div class="detail-value detail-member">
+          <div class="avatar xs" style="background:${mc(req.member_id)}">${initial(child?.name ?? "?")}</div>
+          ${esc(child?.name ?? "?")}
+        </div>
+      </div>
+      <div>
+        <div class="detail-label">Date</div>
+        <div class="detail-value">${esc(dateLabel)}</div>
+      </div>
+      <div>
+        <div class="detail-label">Stay out until</div>
+        <div class="detail-value">${esc(timeLabel)}</div>
+      </div>
+      <div>
+        <div class="detail-label">Normal curfew</div>
+        <div class="detail-value">${normal ? esc(formatTime(normal)) : `<span style="color:var(--muted)">None set</span>`}</div>
+      </div>
+    </div>
+
+    ${req.reason ? `
+      <div style="margin-bottom:12px">
+        <div class="detail-label" style="margin-bottom:4px">Reason</div>
+        <div style="font-size:.9rem;color:var(--text);line-height:1.5">${esc(req.reason)}</div>
+      </div>
+    ` : ""}
+
+    ${reviewBlock ? `<hr class="divider">${reviewBlock}` : ""}
+
+    <div class="modal-actions">
+      ${canDecide ? `
+        <button class="btn btn-success" onclick="openDecision_('${req.id}', 'approve')">✓ Approve</button>
+        <button class="btn btn-danger"  onclick="openDecision_('${req.id}', 'deny')">✗ Deny</button>
+      ` : ""}
+      <button class="btn btn-ghost" onclick="closeModal()">Close</button>
+    </div>
+  `);
+}
+
+window.openDecision_ = function(reqId, decision) {
+  const req = requests.find(r => r.id === reqId);
+  if (!req) return;
+  closeModal();
+  openDecisionModal(req, decision);
+};
+window.closeModal = closeModal;
+
+// ─── Render ────────────────────────────────────────────────────────────────────
+function renderRequestCard(req) {
+  const child       = memberMap.get(req.member_id);
+  const meIsAdult   = isAdult(ME);
+  const needsAction = req.status === "pending" && meIsAdult;
+  const dateLabel   = formatDate(req.date);
+  const timeLabel   = formatTime(req.requested_time);
+
+  return `
+    <div class="request-card ${needsAction ? "needs-action" : ""}"
+      onclick="openDetail_('${req.id}')">
+      <div class="request-main">
+        <div class="request-title">${esc(dateLabel)} until ${esc(timeLabel)}</div>
+        ${meIsAdult ? `
+          <div class="request-meta" style="display:flex;align-items:center;gap:5px">
+            <div class="avatar xs" style="background:${mc(req.member_id)}">${initial(child?.name ?? "?")}</div>
+            ${esc(child?.name ?? "?")}
+          </div>
+        ` : ""}
+        ${req.reason ? `<div class="request-meta">${esc(req.reason)}</div>` : ""}
+      </div>
+      <div class="request-right">
+        ${statusHtml(req.status)}
+        ${needsAction ? `<div class="action-needed">Needs review</div>` : ""}
+      </div>
+    </div>
+  `;
+}
+
+function render() {
+  if (!ME) {
+    document.getElementById("root").innerHTML =
+      `<div class="empty">Please log in to use Curfew Manager.</div>`;
+    return;
+  }
+  if (isAdult(ME)) renderAdultView();
+  else             renderChildView();
+}
+
+function renderAdultView() {
+  const pending  = requests.filter(r => r.status === "pending");
+  const resolved = requests.filter(r => r.status !== "pending");
+
+  document.getElementById("root").innerHTML = `
+    <header>
+      <div>
+        <h1>🌙 Curfew Manager</h1>
+        <div class="sub">Set schedules and review exceptions</div>
+      </div>
+    </header>
+
+    <div class="tabs">
+      <button class="tab ${activeTab === "requests" ? "active" : ""}" onclick="setTab('requests')">
+        Requests
+        ${pending.length > 0 ? `<span class="tab-badge">${pending.length}</span>` : ""}
+      </button>
+      <button class="tab ${activeTab === "schedule" ? "active" : ""}" onclick="setTab('schedule')">
+        Schedule
+      </button>
+    </div>
+
+    <div id="tab-content"></div>
+  `;
+
+  renderAdultTabContent();
+}
+
+function renderAdultTabContent() {
+  const el = document.getElementById("tab-content");
+  if (!el) return;
+
+  if (activeTab === "requests") {
+    const pending  = requests.filter(r => r.status === "pending");
+    const resolved = requests.filter(r => r.status !== "pending");
+
+    const pendingHtml = pending.length === 0
+      ? `<div class="empty" style="padding:24px 0">No pending requests.</div>`
+      : pending.map(r => renderRequestCard(r)).join("");
+
+    const resolvedHtml = resolved.length > 0
+      ? `<hr class="divider">
+         <div class="section-title">Resolved</div>
+         ${resolved.map(r => renderRequestCard(r)).join("")}`
+      : "";
+
+    el.innerHTML = pendingHtml + resolvedHtml;
+  }
+
+  if (activeTab === "schedule") {
+    const childMembers = kids();
+    if (childMembers.length === 0) {
+      el.innerHTML = `<div class="empty">No children in your household yet.</div>`;
+      return;
+    }
+
+    el.innerHTML = childMembers.map(kid => {
+      const weekday = curfewFor(kid.id, "weekday");
+      const weekend = curfewFor(kid.id, "weekend");
+      return `
+        <div class="child-schedule-card">
+          <div class="child-schedule-header">
+            <div class="avatar md" style="background:${mc(kid.id)}">${initial(kid.name)}</div>
+            <div class="name">${esc(kid.name)}</div>
+            <button class="btn btn-ghost btn-sm" onclick="editCurfew('${kid.id}')">Edit</button>
+          </div>
+          <div class="schedule-row">
+            <div class="schedule-label">Weekdays (Mon – Fri)</div>
+            <div class="schedule-time ${weekday ? "set" : ""}">
+              ${weekday ? esc(formatTime(weekday)) : "No curfew set"}
+            </div>
+          </div>
+          <div class="schedule-row">
+            <div class="schedule-label">Weekends (Sat – Sun)</div>
+            <div class="schedule-time ${weekend ? "set" : ""}">
+              ${weekend ? esc(formatTime(weekend)) : "No curfew set"}
+            </div>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+}
+
+function renderChildView() {
+  const myRequests = requests;
+  const weekday    = curfewFor(ME.id, "weekday");
+  const weekend    = curfewFor(ME.id, "weekend");
+  const pending    = myRequests.filter(r => r.status === "pending");
+
+  const requestsHtml = myRequests.length === 0
+    ? `<div class="empty">No exception requests yet. Tap Request Exception to ask for a later night.</div>`
+    : myRequests.map(r => renderRequestCard(r)).join("");
+
+  document.getElementById("root").innerHTML = `
+    <header>
+      <div>
+        <h1>🌙 My Curfew</h1>
+        <div class="sub">Your schedule and exceptions</div>
+      </div>
+      <button class="btn btn-header btn-sm" onclick="openExceptionRequestModal()">
+        + Request Exception
+      </button>
+    </header>
+
+    <div class="curfew-banner">
+      <div class="label">Your Curfew</div>
+      <div class="curfew-grid">
+        <div class="curfew-slot">
+          <div class="day">Weekdays</div>
+          ${weekday
+            ? `<div class="time">${esc(formatTime(weekday))}</div>`
+            : `<div class="none">Not set</div>`}
+        </div>
+        <div class="curfew-slot">
+          <div class="day">Weekends</div>
+          ${weekend
+            ? `<div class="time">${esc(formatTime(weekend))}</div>`
+            : `<div class="none">Not set</div>`}
+        </div>
+      </div>
+    </div>
+
+    ${pending.length > 0 ? `
+      <div class="section-title">Pending</div>
+      ${pending.map(r => renderRequestCard(r)).join("")}
+      <hr class="divider">
+    ` : ""}
+
+    <div class="section-title">All Requests</div>
+    ${requestsHtml}
+  `;
+}
+
+window.setTab = function(tab) { activeTab = tab; render(); };
+window.editCurfew = function(memberId) { openEditCurfewModal(memberId); };
+window.openExceptionRequestModal = openExceptionRequestModal;
+window.openDetail_ = function(id) {
+  const req = requests.find(r => r.id === id);
+  if (req) openDetailModal(req);
+};
+
+// ─── Deep link ─────────────────────────────────────────────────────────────────
+function handleDeepLink() {
+  const requestId = new URLSearchParams(window.location.search).get("requestId");
+  if (!requestId) return;
+  const req = requests.find(r => r.id === requestId);
+  if (req) openDetailModal(req);
+}
+
+// ─── Init ──────────────────────────────────────────────────────────────────────
+(async () => {
+  await Promise.all([loadMembers(), loadCurfews(), loadRequests()]);
+  render();
+  handleDeepLink();
+})();
+</script>
+</body>
+</html>
