@@ -35,10 +35,6 @@
     "curfew.exception_denied"
   ],
   "nav": { "label": "Curfew" },
-  "widget": {
-    "label": "Curfew",
-    "size": "small"
-  },
   "resource_limits": {
     "max_db_bytes": 52428800
   },
