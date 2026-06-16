@@ -419,7 +419,7 @@ async function loadCurfews() {
     ];
     return;
   }
-  const { rows } = await db(`SELECT member_id, day_type, curfew_time FROM curfews`);
+  const { rows } = await db(`SELECT member_id, day_type, curfew_time FROM app_curfew_manager__curfews`);
   curfews = rows ?? [];
 }
 
@@ -428,7 +428,7 @@ async function loadRequests() {
   let rows;
   if (isAdult(ME)) {
     ({ rows } = await db(`
-      SELECT * FROM exception_requests
+      SELECT * FROM app_curfew_manager__exception_requests
       WHERE status != 'denied' OR date >= date('now', '-30 days')
       ORDER BY
         CASE status WHEN 'pending' THEN 0 WHEN 'approved' THEN 1 ELSE 2 END,
@@ -436,7 +436,7 @@ async function loadRequests() {
     `));
   } else {
     ({ rows } = await db(`
-      SELECT * FROM exception_requests
+      SELECT * FROM app_curfew_manager__exception_requests
       WHERE member_id = ?
       ORDER BY
         CASE status WHEN 'pending' THEN 0 WHEN 'approved' THEN 1 ELSE 2 END,
@@ -489,16 +489,16 @@ async function saveCurfew(memberId, dayType, curfewTime) {
   const now = new Date().toISOString();
   if (curfewTime) {
     await db(`
-      INSERT INTO curfews (member_id, day_type, curfew_time, updated_at)
+      INSERT INTO app_curfew_manager__curfews (member_id, day_type, curfew_time, updated_at)
       VALUES (?, ?, ?, ?)
-      ON CONFLICT (household_id, member_id, day_type)
+      ON CONFLICT (member_id, day_type)
       DO UPDATE SET curfew_time = excluded.curfew_time, updated_at = excluded.updated_at
     `, [memberId, dayType, curfewTime, now]);
     const idx = curfews.findIndex(c => c.member_id === memberId && c.day_type === dayType);
     if (idx >= 0) curfews[idx] = { member_id: memberId, day_type: dayType, curfew_time: curfewTime };
     else curfews.push({ member_id: memberId, day_type: dayType, curfew_time: curfewTime });
   } else {
-    await db(`DELETE FROM curfews WHERE member_id = ? AND day_type = ?`, [memberId, dayType]);
+    await db(`DELETE FROM app_curfew_manager__curfews WHERE member_id = ? AND day_type = ?`, [memberId, dayType]);
     curfews = curfews.filter(c => !(c.member_id === memberId && c.day_type === dayType));
   }
 }
@@ -507,7 +507,7 @@ async function submitExceptionRequest(fields) {
   const id  = crypto.randomUUID();
   const now = new Date().toISOString();
   await db(`
-    INSERT INTO exception_requests
+    INSERT INTO app_curfew_manager__exception_requests
       (id, member_id, date, requested_time, reason, status, created_at)
     VALUES (?, ?, ?, ?, ?, 'pending', ?)
   `, [id, ME.id, fields.date, fields.requested_time, fields.reason ?? "", now]);
@@ -552,7 +552,7 @@ async function approveRequest(reqId, note) {
   if (!req || req.status !== "pending") return;
   const now = new Date().toISOString();
   await db(`
-    UPDATE exception_requests
+    UPDATE app_curfew_manager__exception_requests
     SET status = 'approved', reviewed_by = ?, reviewed_at = ?, review_note = ?
     WHERE id = ?
   `, [ME.id, now, note ?? "", reqId]);
@@ -594,7 +594,7 @@ async function denyRequest(reqId, note) {
   if (!req || req.status !== "pending") return;
   const now = new Date().toISOString();
   await db(`
-    UPDATE exception_requests
+    UPDATE app_curfew_manager__exception_requests
     SET status = 'denied', reviewed_by = ?, reviewed_at = ?, review_note = ?
     WHERE id = ?
   `, [ME.id, now, note ?? "", reqId]);

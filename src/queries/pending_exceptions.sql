@@ -6,8 +6,7 @@ SELECT
   reason,
   status,
   created_at
-FROM exception_requests
-WHERE household_id = current_setting('app.household_id', true)::uuid
-  AND status = 'pending'
+FROM app_curfew_manager__exception_requests
+WHERE status = 'pending'
 ORDER BY date ASC, requested_time ASC
 LIMIT 100
