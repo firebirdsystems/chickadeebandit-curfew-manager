@@ -464,7 +464,7 @@ function curfewFor(memberId, dayType) {
 async function notify(title, body, audience = null) {
   const payload = { title, body, url: `/run/${APP_ID}` };
   if (audience) payload.audience = audience;
-  await fetch("/api/notifications/send", {
+  await fetch(window.__NOTIFY_URL ?? "/api/notifications/send", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -528,7 +528,7 @@ async function submitExceptionRequest(fields) {
       `${dateLabel} until ${timeLabel}${fields.reason ? ` — ${fields.reason}` : ""} — open Curfew Manager to review`,
       "adults",
     ),
-    fetch("/api/activity", {
+    fetch(window.__ACTIVITY_URL ?? "/api/activity", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -570,7 +570,7 @@ async function approveRequest(reqId, note) {
       `✅ Curfew exception approved`,
       `${childName}'s request for ${dateLabel} until ${timeLabel} was approved by ${ME.name}${note ? ` — ${note}` : ""}`,
     ),
-    fetch("/api/activity", {
+    fetch(window.__ACTIVITY_URL ?? "/api/activity", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -611,7 +611,7 @@ async function denyRequest(reqId, note) {
       `❌ Curfew exception denied`,
       `${childName}'s request for ${dateLabel} was denied by ${ME.name}${note ? ` — ${note}` : ""}`,
     ),
-    fetch("/api/activity", {
+    fetch(window.__ACTIVITY_URL ?? "/api/activity", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
