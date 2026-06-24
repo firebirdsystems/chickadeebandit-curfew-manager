@@ -24,6 +24,14 @@
     "requires_approval": false
   },
   "storage": "db",
+  "row_policies": {
+    "curfews": { "kind": "adult_writable" },
+    "exception_requests": {
+      "kind": "owner_only",
+      "member_column": "member_id",
+      "member_can_update": false
+    }
+  },
   "publishes": [
     "curfew.exception_requested",
     "curfew.exception_approved",
