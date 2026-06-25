@@ -42,6 +42,10 @@
     "curfew.exception_approved",
     "curfew.exception_denied"
   ],
+  "publish_acls": {
+    "curfew.exception_approved": { "require_role": "adult" },
+    "curfew.exception_denied": { "require_role": "adult" }
+  },
   "nav": { "label": "Curfew" },
   "resource_limits": {
     "max_db_bytes": 52428800
