@@ -639,6 +639,9 @@ function openModal(html) {
   modalEl.innerHTML = `<div class="modal">${html}</div>`;
   modalEl.addEventListener("click", e => { if (e.target === modalEl) closeModal(); });
   document.body.appendChild(modalEl);
+  // Programmatic focus works inside cross-origin iframes (unlike the autofocus
+  // attribute, which the browser blocks) because it rides the user's click gesture.
+  modalEl.querySelector("[data-autofocus]")?.focus();
 }
 function closeModal() { modalEl?.remove(); modalEl = null; }
 
@@ -693,7 +696,7 @@ function openExceptionRequestModal() {
     <h3>Request a Curfew Exception</h3>
     <div class="form-group">
       <label>Date</label>
-      <input id="f-date" type="date" min="${new Date().toISOString().slice(0,10)}" autofocus />
+      <input id="f-date" type="date" min="${new Date().toISOString().slice(0,10)}" data-autofocus />
     </div>
     <div class="form-group">
       <label>Stay out until</label>
@@ -775,7 +778,7 @@ function openDecisionModal(req, decision) {
       <label>Note <span style="font-weight:400;text-transform:none">(optional)</span></label>
       <input id="d-note" type="text"
         placeholder="${isApprove ? "Be home right at that time, text when you arrive…" : "Why not this time…"}"
-        autofocus />
+        data-autofocus />
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
