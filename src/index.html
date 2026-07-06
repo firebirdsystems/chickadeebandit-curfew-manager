@@ -379,6 +379,17 @@ let memberMap = new Map();
 let curfews   = [];
 let requests  = [];
 let activeTab = "requests"; // adult: "requests" | "schedule" | child: irrelevant
+let detailReqId   = null;   // request open in the detail modal
+let decisionReqId = null;   // request open in the approve/deny modal
+
+// Request ids come from the DB and are attacker-controllable via raw /api/db (a
+// child can INSERT an exception request with a crafted id), so cards carry the id
+// in a data-* attribute read back with getAttribute — never interpolated into an
+// inline onclick JS string, which the approving parent's browser would execute.
+document.getElementById("root").addEventListener("click", (e) => {
+  const card = e.target.closest("[data-detail-id]");
+  if (card) window.openDetail_(card.getAttribute("data-detail-id"));
+});
 
 // ─── DB helper ────────────────────────────────────────────────────────────────
 async function db(sql, params = []) {
@@ -760,6 +771,7 @@ window.submitExceptionModal = async function() {
 
 // ─── Decision modal ────────────────────────────────────────────────────────────
 function openDecisionModal(req, decision) {
+  decisionReqId   = req.id;
   const isApprove = decision === "approve";
   const dateLabel = formatDate(req.date);
   const timeLabel = formatTime(req.requested_time);
@@ -783,14 +795,15 @@ function openDecisionModal(req, decision) {
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
       <button class="btn ${isApprove ? "btn-success" : "btn-danger"}"
-        onclick="submitDecision('${req.id}', '${decision}')">
+        onclick="submitDecision('${decision}')">
         ${isApprove ? "Approve" : "Deny"}
       </button>
     </div>
   `);
 }
 
-window.submitDecision = async function(reqId, decision) {
+window.submitDecision = async function(decision) {
+  const reqId = decisionReqId;
   const note = document.getElementById("d-note").value.trim();
   const btn  = modalEl?.querySelector('.modal-actions button:not(.btn-ghost)');
   if (btn) { btn.disabled = true; btn.textContent = "Saving…"; }
@@ -800,6 +813,7 @@ window.submitDecision = async function(reqId, decision) {
 
 // ─── Detail modal ──────────────────────────────────────────────────────────────
 function openDetailModal(req) {
+  detailReqId       = req.id;
   const child       = memberMap.get(req.member_id);
   const reviewer    = req.reviewed_by ? memberMap.get(req.reviewed_by) : null;
   const meIsAdult   = isAdult(ME);
@@ -862,16 +876,16 @@ function openDetailModal(req) {
 
     <div class="modal-actions">
       ${canDecide ? `
-        <button class="btn btn-success" onclick="openDecision_('${req.id}', 'approve')">✓ Approve</button>
-        <button class="btn btn-danger"  onclick="openDecision_('${req.id}', 'deny')">✗ Deny</button>
+        <button class="btn btn-success" onclick="openDecision_('approve')">✓ Approve</button>
+        <button class="btn btn-danger"  onclick="openDecision_('deny')">✗ Deny</button>
       ` : ""}
       <button class="btn btn-ghost" onclick="closeModal()">Close</button>
     </div>
   `);
 }
 
-window.openDecision_ = function(reqId, decision) {
-  const req = requests.find(r => r.id === reqId);
+window.openDecision_ = function(decision) {
+  const req = requests.find(r => r.id === detailReqId);
   if (!req) return;
   closeModal();
   openDecisionModal(req, decision);
@@ -888,7 +902,7 @@ function renderRequestCard(req) {
 
   return `
     <div class="request-card ${needsAction ? "needs-action" : ""}"
-      onclick="openDetail_('${req.id}')">
+      data-detail-id="${esc(req.id)}">
       <div class="request-main">
         <div class="request-title">${esc(dateLabel)} until ${esc(timeLabel)}</div>
         ${meIsAdult ? `
