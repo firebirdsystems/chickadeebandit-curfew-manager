@@ -1,7 +1,7 @@
 {
   "id": "curfew-manager",
   "name": "Curfew Manager",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Adults set per-child curfew times by weekday and weekend. Kids see their schedule and can request one-time exceptions. Parents approve or deny in-app.",
   "entrypoint": "index.html",
   "runtime": "static",
@@ -24,6 +24,15 @@
     "requires_approval": false
   },
   "storage": "db",
+  "db_plaintext_columns": ["date", "requested_time"],
+  "agenda": {
+    "kind": "reminder",
+    "label": "Curfew",
+    "source": {
+      "kind": "sql",
+      "query": "SELECT id AS id, 'Home by ' || requested_time AS title, date AS when_at, member_id AS member_id, NULLIF(reason, '') AS subtitle FROM app_curfew_manager__exception_requests WHERE date = :today AND status = 'approved' ORDER BY requested_time LIMIT 20"
+    }
+  },
   "row_policies": {
     "curfews": { "kind": "adult_writable" },
     "exception_requests": {
