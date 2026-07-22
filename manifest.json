@@ -1,5 +1,6 @@
 {
   "id": "curfew-manager",
+  "contexts": ["household", "shared_space"],
   "name": "Curfew Manager",
   "version": "1.1.0",
   "description": "Adults set per-child curfew times by weekday and weekend. Kids see their schedule and can request one-time exceptions. Parents approve or deny in-app.",
