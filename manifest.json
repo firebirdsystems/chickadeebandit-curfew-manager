@@ -39,8 +39,30 @@
     "exception_requests": {
       "kind": "owner_only",
       "member_column": "member_id",
-      "member_can_update": false
+      "member_can_update": false,
+      "retain_days": {
+        "default": 365,
+        "timestamp_column": "created_at",
+        "override_key": "exception_history"
+      }
     }
+  },
+  "member_references": {
+    "curfews": {
+      "column": "member_id",
+      "on_removed": "delete",
+      "id_column": "rowid"
+    },
+    "exception_requests": [
+      {
+        "column": "member_id",
+        "on_removed": "delete"
+      },
+      {
+        "column": "reviewed_by",
+        "on_removed": "keep"
+      }
+    ]
   },
   "publishes": [
     "curfew.exception_requested",
