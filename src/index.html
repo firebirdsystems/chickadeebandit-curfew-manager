@@ -355,6 +355,13 @@
       margin-bottom: 8px;
     }
     .divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+    .search-row { margin-bottom: 12px; }
+    .search-input {
+      width: 100%; border: 1.5px solid var(--border-mid, var(--border, #d1d5db));
+      border-radius: 8px; padding: 9px 11px; font: inherit;
+      background: var(--surface, var(--card, #fff)); color: var(--text, inherit);
+    }
+    .search-input:focus { outline: none; border-color: var(--accent, #6366f1); }
   </style>
   <base href="/run/curfew-manager/" />
 </head>
@@ -364,8 +371,8 @@
 </div>
 
 <script type="module">
-import { memberColor, initial, esc, isAdult, hubConfirm } from "/hub-sdk.js";
-import { formatTime, formatDate, getDayType, getCurfewForDate, exceedsCurfew, STATUS_INFO } from "./logic.js";
+import { memberColor, initial, esc, isAdult, hubConfirm, searchMatch } from "/hub-sdk.js";
+import { formatTime, formatDate, getDayType, getCurfewForDate, exceedsCurfew, STATUS_INFO, searchableFields } from "./logic.js";
 
 const CONTEXT    = window.__CONTEXT_URL    ?? "";
 const DB         = window.__DB_URL         ?? "";
@@ -379,6 +386,7 @@ let memberMap = new Map();
 let curfews   = [];
 let requests  = [];
 let activeTab = "requests"; // adult: "requests" | "schedule" | child: irrelevant
+let searchQ = "";       // in-app search (see logic.js searchableFields)
 let detailReqId   = null;   // request open in the detail modal
 let decisionReqId = null;   // request open in the approve/deny modal
 
@@ -959,16 +967,27 @@ function renderAdultView() {
   renderAdultTabContent();
 }
 
+document.addEventListener("input", (e) => {
+  if (e.target.id !== "search") return;
+  searchQ = e.target.value;
+  renderAdultTabContent();
+});
+
 function renderAdultTabContent() {
   const el = document.getElementById("tab-content");
   if (!el) return;
 
   if (activeTab === "requests") {
-    const pending  = requests.filter(r => r.status === "pending");
-    const resolved = requests.filter(r => r.status !== "pending");
+    const matched  = searchQ ? requests.filter(r => searchMatch(searchQ, searchableFields(r))) : requests;
+    const pending  = matched.filter(r => r.status === "pending");
+    const resolved = matched.filter(r => r.status !== "pending");
+
+    const searchRow = requests.length ? `<div class="search-row"><input id="search" class="search-input" type="search" placeholder="Search requests…" aria-label="Search requests" value="${esc(searchQ)}" /></div>` : "";
 
     const pendingHtml = pending.length === 0
-      ? `<div class="empty" style="padding:24px 0">No pending requests.</div>`
+      ? (searchQ && resolved.length === 0
+        ? `<div class="empty" style="padding:24px 0">No requests match "${esc(searchQ)}".</div>`
+        : `<div class="empty" style="padding:24px 0">No pending requests.</div>`)
       : pending.map(r => renderRequestCard(r)).join("");
 
     const resolvedHtml = resolved.length > 0
@@ -977,7 +996,12 @@ function renderAdultTabContent() {
          ${resolved.map(r => renderRequestCard(r)).join("")}`
       : "";
 
-    el.innerHTML = pendingHtml + resolvedHtml;
+    el.innerHTML = searchRow + pendingHtml + resolvedHtml;
+    // Only the tab body is redrawn, so put the caret back after typing.
+    if (searchQ) {
+      const box = document.getElementById("search");
+      if (box) { box.focus(); box.setSelectionRange(searchQ.length, searchQ.length); }
+    }
   }
 
   if (activeTab === "schedule") {

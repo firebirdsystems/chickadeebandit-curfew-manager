@@ -4,7 +4,7 @@ import {
   formatDate,
   getDayType,
   getCurfewForDate,
-  exceedsCurfew,
+  exceedsCurfew, searchableFields,
 } from "../src/logic.js";
 
 describe("formatTime", () => {
@@ -64,4 +64,12 @@ describe("exceedsCurfew", () => {
   it("returns false when request equals curfew",  () => expect(exceedsCurfew("21:00", "21:00")).toBe(false));
   it("returns false when curfew is null",          () => expect(exceedsCurfew(null, "23:00")).toBe(false));
   it("returns false when requested time is null",  () => expect(exceedsCurfew("21:00", null)).toBe(false));
+});
+
+describe("searchableFields", () => {
+  it("matches on the reason asked and the note given back", () => {
+    const fields = searchableFields({ reason: "concert finishes late", review_note: "ok, taxi home", date: "2026-03-04" });
+    expect(fields).toContain("concert finishes late");
+    expect(fields).toContain("ok, taxi home");
+  });
 });

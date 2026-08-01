@@ -62,3 +62,12 @@ export const STATUS_INFO = {
   approved: { cls: "status-approved", label: "Approved" },
   denied:   { cls: "status-denied",   label: "Denied" },
 };
+
+/**
+ * Fields the in-app search matches against (see hub-sdk `searchMatch`).
+ * The reason is the request, and the review note is the answer —
+ * both are what a past exception gets looked up by.
+ */
+export function searchableFields(item) {
+  return [item.reason, item.review_note, item.date];
+}
