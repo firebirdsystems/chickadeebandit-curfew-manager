@@ -547,16 +547,15 @@ async function submitExceptionRequest(fields) {
       `${dateLabel} until ${timeLabel}${fields.reason ? ` — ${fields.reason}` : ""} — open Curfew Manager to review`,
       "adults",
     ),
-    fetch(window.__ACTIVITY_URL ?? "/api/activity", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        type: "message_posted",
-        actor: ME.name,
-        description: `${ME.name} requested a curfew exception for ${dateLabel} until ${timeLabel}`,
-        metadata: { deepLink: { appId: APP_ID, params: { requestId: id } } },
-      }),
-    }).catch(() => {}),
+    // No activity-feed write here or at the two sibling sites below. That POST
+    // used "message_posted", which is not one of the hub's own ActivityType
+    // values a caller may write (CALLER_ALLOWED_ACTIVITY_TYPES) — the near
+    // neighbour, conversation_message_posted, means a Household message and is
+    // wired to the bell's Messages section, which a curfew request is not. So
+    // the hub refused every call with a 403 and no household ever saw an entry;
+    // a fetch does not reject on 4xx, so the .catch() hid it. It also sent an
+    // `actor` the hub ignores, resolving that from the session instead.
+    // The curfew.* events published alongside are the sink that works.
     publishEvent("curfew.exception_requested", id, {
       member_id:      ME.id,
       member_name:    ME.name,
@@ -589,16 +588,6 @@ async function approveRequest(reqId, note) {
       `✅ Curfew exception approved`,
       `${childName}'s request for ${dateLabel} until ${timeLabel} was approved by ${ME.name}${note ? ` — ${note}` : ""}`,
     ),
-    fetch(window.__ACTIVITY_URL ?? "/api/activity", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        type: "message_posted",
-        actor: ME.name,
-        description: `${ME.name} approved ${childName}'s curfew exception for ${dateLabel}`,
-        metadata: { deepLink: { appId: APP_ID, params: { requestId: reqId } } },
-      }),
-    }).catch(() => {}),
     publishEvent("curfew.exception_approved", reqId, {
       member_id:   req.member_id,
       member_name: childName,
@@ -630,16 +619,6 @@ async function denyRequest(reqId, note) {
       `❌ Curfew exception denied`,
       `${childName}'s request for ${dateLabel} was denied by ${ME.name}${note ? ` — ${note}` : ""}`,
     ),
-    fetch(window.__ACTIVITY_URL ?? "/api/activity", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        type: "message_posted",
-        actor: ME.name,
-        description: `${ME.name} denied ${childName}'s curfew exception for ${dateLabel}`,
-        metadata: { deepLink: { appId: APP_ID, params: { requestId: reqId } } },
-      }),
-    }).catch(() => {}),
     publishEvent("curfew.exception_denied", reqId, {
       member_id:   req.member_id,
       member_name: childName,
