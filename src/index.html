@@ -507,6 +507,12 @@ async function publishEvent(type, subjectId, payload = {}) {
 async function saveCurfew(memberId, dayType, curfewTime) {
   const now = new Date().toISOString();
   if (curfewTime) {
+    // `day_type` MUST stay in manifest.db_plaintext_columns. App-db encryption
+    // uses a fresh random IV per write, so an encrypted day_type never compares
+    // equal to itself: the PRIMARY KEY could not collide, this ON CONFLICT
+    // never fired, and every save inserted a SECOND row instead of updating.
+    // The list below then read the older row back and the change appeared to
+    // revert on reload. Same reason the DELETE and the agenda both match on it.
     await db(`
       INSERT INTO app_curfew_manager__curfews (member_id, day_type, curfew_time, updated_at)
       VALUES (?, ?, ?, ?)

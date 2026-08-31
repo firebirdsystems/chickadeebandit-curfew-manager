@@ -29,7 +29,7 @@
     "curfews": {"sql": "SELECT member_id, day_type, curfew_time FROM app_curfew_manager__curfews"},
     "exception_requests": {"sql": "SELECT * FROM app_curfew_manager__exception_requests WHERE status != 'denied' OR date >= date('now', '-30 days') ORDER BY CASE status WHEN 'pending' THEN 0 WHEN 'approved' THEN 1 ELSE 2 END, date ASC, requested_time ASC"}
   },
-  "db_plaintext_columns": ["date", "requested_time"],
+  "db_plaintext_columns": ["date", "day_type", "requested_time"],
   "agenda": {
     "kind": "reminder",
     "label": "Curfew",
