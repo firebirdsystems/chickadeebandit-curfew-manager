@@ -371,7 +371,7 @@
 </div>
 
 <script type="module">
-import { memberColor, initial, esc, isAdult, hubConfirm, searchMatch } from "/hub-sdk.js";
+import { memberColor, initial, esc, isAdult, hubConfirm, searchMatch, hubToday } from "/hub-sdk.js";
 import { formatTime, formatDate, getDayType, getCurfewForDate, exceedsCurfew, STATUS_INFO, searchableFields } from "./logic.js";
 
 const CONTEXT    = window.__CONTEXT_URL    ?? "";
@@ -694,7 +694,7 @@ function openExceptionRequestModal() {
     <h3>Request a Curfew Exception</h3>
     <div class="form-group">
       <label>Date</label>
-      <input id="f-date" type="date" min="${new Date().toISOString().slice(0,10)}" data-autofocus />
+      <input id="f-date" type="date" min="${hubToday()}" data-autofocus />
     </div>
     <div class="form-group">
       <label>Stay out until</label>
