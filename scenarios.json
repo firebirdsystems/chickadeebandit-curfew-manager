@@ -1,0 +1,200 @@
+{
+  "scenarios": [
+    {
+      "name": "a child sees only their own exception requests; an adult sees every child's",
+      "members": { "parent": "adult", "childA": "child", "childB": "child" },
+      "steps": [
+        {
+          "action": "seedRaw",
+          "sql": "INSERT INTO app_curfew_manager__exception_requests (id, member_id, date, requested_time, reason, status, created_at) VALUES ('e_a', ?, '2026-01-10', '23:00', 'Concert', 'pending', '2026-01-01T00:00:00Z'), ('e_b', ?, '2026-01-11', '22:30', 'Sleepover', 'pending', '2026-01-01T00:00:00Z')",
+          "params": ["{{childA}}", "{{childB}}"]
+        },
+        {
+          "action": "db",
+          "as": "childA",
+          "sql": "SELECT id FROM app_curfew_manager__exception_requests",
+          "expect": { "status": 200, "rowCount": 1, "rowsContain": [{ "id": "e_a" }] }
+        },
+        {
+          "action": "db",
+          "as": "childA",
+          "sql": "SELECT id FROM app_curfew_manager__exception_requests WHERE id = ?",
+          "params": ["e_b"],
+          "expect": { "status": 200, "rowCount": 0 }
+        },
+        {
+          "action": "db",
+          "as": "parent",
+          "sql": "SELECT id FROM app_curfew_manager__exception_requests ORDER BY id",
+          "expect": { "status": 200, "rowCount": 2, "rowsContain": [{ "id": "e_a" }, { "id": "e_b" }] }
+        }
+      ]
+    },
+    {
+      "name": "a child cannot approve or delete their own exception request; an adult can approve it",
+      "members": { "parent": "adult", "child": "child" },
+      "steps": [
+        {
+          "action": "seedRaw",
+          "sql": "INSERT INTO app_curfew_manager__exception_requests (id, member_id, date, requested_time, reason, status, created_at) VALUES ('e1', ?, '2026-01-10', '23:00', 'Concert', 'pending', '2026-01-01T00:00:00Z')",
+          "params": ["{{child}}"]
+        },
+        {
+          "action": "db",
+          "as": "child",
+          "sql": "UPDATE app_curfew_manager__exception_requests SET status = 'approved' WHERE id = ?",
+          "params": ["e1"],
+          "expect": { "status": 403 }
+        },
+        {
+          "action": "db",
+          "as": "child",
+          "sql": "DELETE FROM app_curfew_manager__exception_requests WHERE id = ?",
+          "params": ["e1"],
+          "expect": { "status": 403 }
+        },
+        {
+          "action": "db",
+          "as": "child",
+          "sql": "SELECT id, status FROM app_curfew_manager__exception_requests",
+          "expect": { "status": 200, "rowCount": 1, "rowsContain": [{ "id": "e1", "status": "pending" }] }
+        },
+        {
+          "action": "db",
+          "as": "parent",
+          "sql": "UPDATE app_curfew_manager__exception_requests SET status = 'approved', reviewed_by = ?, reviewed_at = ? WHERE id = ?",
+          "params": ["{{parent}}", "2026-01-02T00:00:00Z", "e1"],
+          "expect": { "status": 200 }
+        },
+        {
+          "action": "db",
+          "as": "child",
+          "sql": "SELECT id, status FROM app_curfew_manager__exception_requests",
+          "expect": { "status": 200, "rowCount": 1, "rowsContain": [{ "id": "e1", "status": "approved" }] }
+        }
+      ]
+    },
+    {
+      "name": "a child's exception request is always filed under their own id, even if they name a sibling",
+      "members": { "childA": "child", "childB": "child" },
+      "steps": [
+        {
+          "action": "db",
+          "as": "childA",
+          "sql": "INSERT INTO app_curfew_manager__exception_requests (id, member_id, date, requested_time, reason, status, created_at) VALUES (?, ?, ?, ?, ?, 'pending', ?)",
+          "params": ["e1", "{{childB}}", "2026-01-10", "23:30", "Game night", "2026-01-01T00:00:00Z"],
+          "expect": { "status": 200 }
+        },
+        {
+          "action": "db",
+          "as": "childB",
+          "sql": "SELECT id FROM app_curfew_manager__exception_requests",
+          "expect": { "status": 200, "rowCount": 0 }
+        },
+        {
+          "action": "db",
+          "as": "childA",
+          "sql": "SELECT id FROM app_curfew_manager__exception_requests WHERE member_id = ?",
+          "params": ["{{childA}}"],
+          "expect": { "status": 200, "rowCount": 1, "rowsContain": [{ "id": "e1" }] }
+        }
+      ]
+    },
+    {
+      "name": "only adults set curfew times; a child can read their schedule but not change it",
+      "members": { "parent": "adult", "child": "child" },
+      "steps": [
+        {
+          "action": "db",
+          "as": "parent",
+          "sql": "INSERT INTO app_curfew_manager__curfews (member_id, day_type, curfew_time, updated_at) VALUES (?, 'weekday', '21:00', '2026-01-01T00:00:00Z')",
+          "params": ["{{child}}"],
+          "expect": { "status": 200 }
+        },
+        {
+          "action": "db",
+          "as": "child",
+          "sql": "UPDATE app_curfew_manager__curfews SET curfew_time = '23:59' WHERE member_id = ? AND day_type = 'weekday'",
+          "params": ["{{child}}"],
+          "expect": { "status": 403 }
+        },
+        {
+          "action": "db",
+          "as": "child",
+          "sql": "INSERT INTO app_curfew_manager__curfews (member_id, day_type, curfew_time, updated_at) VALUES (?, 'weekend', '23:59', '2026-01-01T00:00:00Z')",
+          "params": ["{{child}}"],
+          "expect": { "status": 403 }
+        },
+        {
+          "action": "db",
+          "as": "child",
+          "sql": "SELECT day_type, curfew_time FROM app_curfew_manager__curfews",
+          "expect": { "status": 200, "rowCount": 1, "rowsContain": [{ "day_type": "weekday", "curfew_time": "21:00" }] }
+        },
+        {
+          "action": "named",
+          "as": "parent",
+          "kind": "query",
+          "name": "curfew_schedules",
+          "expect": { "status": 200, "rowCount": 1, "rowsContain": [{ "day_type": "weekday", "curfew_time": "21:00" }] }
+        }
+      ]
+    },
+    {
+      "name": "pending_exceptions lists only undecided requests",
+      "members": { "parent": "adult", "child": "child" },
+      "steps": [
+        {
+          "action": "seedRaw",
+          "sql": "INSERT INTO app_curfew_manager__exception_requests (id, member_id, date, requested_time, reason, status, created_at) VALUES ('e_p', ?, '2026-01-10', '23:00', 'Concert', 'pending', '2026-01-01T00:00:00Z'), ('e_ok', ?, '2026-01-11', '22:00', 'Movie', 'approved', '2026-01-01T00:00:00Z'), ('e_no', ?, '2026-01-12', '01:00', 'Party', 'denied', '2026-01-01T00:00:00Z')",
+          "params": ["{{child}}", "{{child}}", "{{child}}"]
+        },
+        {
+          "action": "named",
+          "as": "parent",
+          "kind": "query",
+          "name": "pending_exceptions",
+          "expect": { "status": 200, "rowCount": 1, "rowsContain": [{ "id": "e_p", "status": "pending" }] }
+        }
+      ]
+    },
+    {
+      "name": "a child can announce a request but only an adult can publish an approval or denial",
+      "members": { "parent": "adult", "child": "child" },
+      "steps": [
+        {
+          "action": "publish",
+          "as": "child",
+          "type": "curfew.exception_approved",
+          "subject_id": "e1",
+          "payload": { "member_id": "scn-child", "date": "2026-01-10" },
+          "expect": { "status": 403, "errorIncludes": "requires an adult" }
+        },
+        {
+          "action": "publish",
+          "as": "child",
+          "type": "curfew.exception_denied",
+          "subject_id": "e1",
+          "payload": { "member_id": "scn-child", "date": "2026-01-10" },
+          "expect": { "status": 403, "errorIncludes": "requires an adult" }
+        },
+        {
+          "action": "publish",
+          "as": "child",
+          "type": "curfew.exception_requested",
+          "subject_id": "e1",
+          "payload": { "member_id": "scn-child", "date": "2026-01-10" },
+          "expect": { "status": 201 }
+        },
+        {
+          "action": "publish",
+          "as": "parent",
+          "type": "curfew.exception_approved",
+          "subject_id": "e1",
+          "payload": { "member_id": "scn-child", "date": "2026-01-10" },
+          "expect": { "status": 201 }
+        }
+      ]
+    }
+  ]
+}
