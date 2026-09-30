@@ -195,6 +195,56 @@
           "expect": { "status": 201 }
         }
       ]
+    },
+    {
+      "name": "in a shared space a participant adult sees only their own exception requests and cannot approve another's, while the steward sees and approves every request",
+      "context": "shared_space",
+      "members": { "a": "adult", "b": "adult", "steward": "admin" },
+      "steps": [
+        {
+          "action": "seedRaw",
+          "sql": "INSERT INTO app_curfew_manager__exception_requests (id, member_id, date, requested_time, reason, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          "params": ["r-a", "{{a}}", "2026-03-06", "23:00", "Concert", "pending", "2026-03-01T00:00:00Z"]
+        },
+        {
+          "action": "seedRaw",
+          "sql": "INSERT INTO app_curfew_manager__exception_requests (id, member_id, date, requested_time, reason, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          "params": ["r-b", "{{b}}", "2026-03-07", "23:30", "Party", "pending", "2026-03-01T00:00:00Z"]
+        },
+        {
+          "action": "db",
+          "as": "a",
+          "sql": "SELECT id FROM app_curfew_manager__exception_requests ORDER BY id",
+          "expect": { "status": 200, "rowCount": 1, "rowsContain": [{ "id": "r-a" }] }
+        },
+        {
+          "action": "db",
+          "as": "a",
+          "sql": "UPDATE app_curfew_manager__exception_requests SET status = 'approved', reviewed_by = ? WHERE id = ?",
+          "params": ["{{a}}", "r-b"],
+          "expect": { "status": 403 }
+        },
+        {
+          "action": "db",
+          "as": "steward",
+          "sql": "SELECT id FROM app_curfew_manager__exception_requests ORDER BY id",
+          "expect": { "status": 200, "rowCount": 2, "rowsContain": [{ "id": "r-a" }, { "id": "r-b" }] }
+        },
+        {
+          "action": "db",
+          "as": "steward",
+          "sql": "UPDATE app_curfew_manager__exception_requests SET status = 'approved', reviewed_by = ? WHERE id = ?",
+          "params": ["{{steward}}", "r-b"],
+          "expect": { "status": 200 }
+        },
+        {
+          "action": "db",
+          "as": "b",
+          "sql": "SELECT status FROM app_curfew_manager__exception_requests WHERE id = ?",
+          "params": ["r-b"],
+          "expect": { "status": 200, "rowCount": 1, "rowsContain": [{ "status": "approved" }] }
+        }
+      ]
     }
   ]
 }
