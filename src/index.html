@@ -371,7 +371,7 @@
 </div>
 
 <script type="module">
-import { memberColor, initial, esc, isAdult, hubConfirm, searchMatch, hubToday } from "/hub-sdk.js";
+import { memberColor, initial, esc, isAdult, hubConfirm, searchMatch, hubToday, glyph } from "/hub-sdk.js";
 import { formatTime, formatDate, getDayType, getCurfewForDate, exceedsCurfew, STATUS_INFO, searchableFields } from "./logic.js";
 
 const CONTEXT    = window.__CONTEXT_URL    ?? "";
@@ -771,7 +771,7 @@ function openDecisionModal(req, decision) {
   const childName = memberName(req.member_id);
 
   openModal(`
-    <h3>${isApprove ? "✅ Approve Exception" : "❌ Deny Exception"}</h3>
+    <h3>${isApprove ? `${glyph("check")} Approve Exception` : `${glyph("close")} Deny Exception`}</h3>
     <div style="margin-bottom:14px">
       <div style="font-weight:600">${esc(childName)}</div>
       <div style="font-size:.85rem;color:var(--muted);margin-top:2px">
@@ -869,8 +869,8 @@ function openDetailModal(req) {
 
     <div class="modal-actions">
       ${canDecide ? `
-        <button class="btn btn-success" onclick="openDecision_('approve')">✓ Approve</button>
-        <button class="btn btn-danger"  onclick="openDecision_('deny')">✗ Deny</button>
+        <button class="btn btn-success" onclick="openDecision_('approve')">${glyph("tick", { accent: "currentColor" })} Approve</button>
+        <button class="btn btn-danger"  onclick="openDecision_('deny')">${glyph("close", { accent: "currentColor" })} Deny</button>
       ` : ""}
       <button class="btn btn-ghost" onclick="closeModal()">Close</button>
     </div>
@@ -931,7 +931,7 @@ function renderAdultView() {
   document.getElementById("root").innerHTML = `
     <header>
       <div>
-        <h1>🌙 Curfew Manager</h1>
+        <h1>${glyph("moon")} Curfew Manager</h1>
         <div class="sub">Set schedules and review exceptions</div>
       </div>
     </header>
@@ -1037,7 +1037,7 @@ function renderChildView() {
   document.getElementById("root").innerHTML = `
     <header>
       <div>
-        <h1>🌙 My Curfew</h1>
+        <h1>${glyph("moon")} My Curfew</h1>
         <div class="sub">Your schedule and exceptions</div>
       </div>
       <button class="btn btn-header btn-sm" onclick="openExceptionRequestModal()">
