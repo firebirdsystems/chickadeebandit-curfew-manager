@@ -1,0 +1,357 @@
+{
+ "seed": [
+  {
+   "sql": "INSERT INTO app_curfew_manager__curfews (member_id, day_type, curfew_time, updated_at) VALUES (?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-40 days'))",
+   "params": [
+    "{{me}}",
+    "weekday",
+    "21:00"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_curfew_manager__curfews (member_id, day_type, curfew_time, updated_at) VALUES (?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-40 days'))",
+   "params": [
+    "{{me}}",
+    "weekend",
+    "22:30"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_curfew_manager__exception_requests (id, member_id, date, requested_time, reason, status, created_at) VALUES (?, ?, date('now','+2 days'), ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-1 days'))",
+   "params": [
+    "rq-1",
+    "{{me}}",
+    "23:00",
+    "Homecoming dance, riding home with Maya's mom",
+    "pending"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_curfew_manager__exception_requests (id, member_id, date, requested_time, reason, status, created_at) VALUES (?, ?, date('now','+3 days'), ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-1 days'))",
+   "params": [
+    "rq-2",
+    "{{me}}",
+    "22:00",
+    "Study group for the chemistry midterm at the library",
+    "pending"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_curfew_manager__exception_requests (id, member_id, date, requested_time, reason, status, created_at) VALUES (?, ?, date('now','+8 days'), ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-1 days'))",
+   "params": [
+    "rq-3",
+    "{{me}}",
+    "23:30",
+    "Varsity away game, the bus gets back late",
+    "pending"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_curfew_manager__exception_requests (id, member_id, date, requested_time, reason, status, created_at) VALUES (?, ?, date('now','+9 days'), ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-1 days'))",
+   "params": [
+    "rq-4",
+    "{{me}}",
+    "22:30",
+    "Leo's birthday bowling party",
+    "pending"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_curfew_manager__exception_requests (id, member_id, date, requested_time, reason, status, created_at) VALUES (?, ?, date('now','+15 days'), ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-1 days'))",
+   "params": [
+    "rq-5",
+    "{{me}}",
+    "23:59",
+    "Concert downtown with cousin Lena",
+    "pending"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_curfew_manager__exception_requests (id, member_id, date, requested_time, reason, status, reviewed_by, reviewed_at, review_note, created_at) VALUES (?, ?, date('now','+0 days'), ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-2 days'), ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-3 days'))",
+   "params": [
+    "rq-6",
+    "{{me}}",
+    "22:30",
+    "Late shift at the ice cream shop",
+    "approved",
+    "{{me}}",
+    "Text when you clock out"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_curfew_manager__exception_requests (id, member_id, date, requested_time, reason, status, reviewed_by, reviewed_at, created_at) VALUES (?, ?, date('now','+1 days'), ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-1 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-2 days'))",
+   "params": [
+    "rq-7",
+    "{{me}}",
+    "23:00",
+    "Movie night at the Petersons",
+    "approved",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_curfew_manager__exception_requests (id, member_id, date, requested_time, reason, status, reviewed_by, reviewed_at, review_note, created_at) VALUES (?, ?, date('now','+5 days'), ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-0 days'), ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-1 days'))",
+   "params": [
+    "rq-8",
+    "{{me}}",
+    "22:15",
+    "Robotics build night before the regional",
+    "approved",
+    "{{me}}",
+    "Coach confirmed the end time"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_curfew_manager__exception_requests (id, member_id, date, requested_time, reason, status, reviewed_by, reviewed_at, created_at) VALUES (?, ?, date('now','-1 days'), ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-3 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-4 days'))",
+   "params": [
+    "rq-9",
+    "{{me}}",
+    "22:00",
+    "Band concert and pack-up",
+    "approved",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_curfew_manager__exception_requests (id, member_id, date, requested_time, reason, status, reviewed_by, reviewed_at, review_note, created_at) VALUES (?, ?, date('now','-3 days'), ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-5 days'), ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-6 days'))",
+   "params": [
+    "rq-10",
+    "{{me}}",
+    "23:00",
+    "Football game and pizza after",
+    "approved",
+    "{{me}}",
+    "Home by eleven sharp"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_curfew_manager__exception_requests (id, member_id, date, requested_time, reason, status, reviewed_by, reviewed_at, created_at) VALUES (?, ?, date('now','-6 days'), ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-8 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-9 days'))",
+   "params": [
+    "rq-11",
+    "{{me}}",
+    "22:30",
+    "Late shift at the ice cream shop",
+    "approved",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_curfew_manager__exception_requests (id, member_id, date, requested_time, reason, status, reviewed_by, reviewed_at, created_at) VALUES (?, ?, date('now','-8 days'), ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-10 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-11 days'))",
+   "params": [
+    "rq-12",
+    "{{me}}",
+    "23:30",
+    "Sleepover start moved, late drop-off",
+    "approved",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_curfew_manager__exception_requests (id, member_id, date, requested_time, reason, status, reviewed_by, reviewed_at, review_note, created_at) VALUES (?, ?, date('now','-10 days'), ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-12 days'), ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-13 days'))",
+   "params": [
+    "rq-13",
+    "{{me}}",
+    "22:00",
+    "Youth group bonfire",
+    "approved",
+    "{{me}}",
+    "Bring a jacket"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_curfew_manager__exception_requests (id, member_id, date, requested_time, reason, status, reviewed_by, reviewed_at, created_at) VALUES (?, ?, date('now','-13 days'), ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-15 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-16 days'))",
+   "params": [
+    "rq-14",
+    "{{me}}",
+    "22:30",
+    "Late shift at the ice cream shop",
+    "approved",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_curfew_manager__exception_requests (id, member_id, date, requested_time, reason, status, reviewed_by, reviewed_at, created_at) VALUES (?, ?, date('now','-15 days'), ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-17 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-18 days'))",
+   "params": [
+    "rq-15",
+    "{{me}}",
+    "23:00",
+    "School play cast party",
+    "approved",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_curfew_manager__exception_requests (id, member_id, date, requested_time, reason, status, reviewed_by, reviewed_at, created_at) VALUES (?, ?, date('now','-17 days'), ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-19 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-20 days'))",
+   "params": [
+    "rq-16",
+    "{{me}}",
+    "22:15",
+    "Debate tournament ran long",
+    "approved",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_curfew_manager__exception_requests (id, member_id, date, requested_time, reason, status, reviewed_by, reviewed_at, created_at) VALUES (?, ?, date('now','-20 days'), ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-22 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-23 days'))",
+   "params": [
+    "rq-17",
+    "{{me}}",
+    "22:30",
+    "Late shift at the ice cream shop",
+    "approved",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_curfew_manager__exception_requests (id, member_id, date, requested_time, reason, status, reviewed_by, reviewed_at, review_note, created_at) VALUES (?, ?, date('now','-22 days'), ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-24 days'), ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-25 days'))",
+   "params": [
+    "rq-18",
+    "{{me}}",
+    "23:00",
+    "Fall festival with the neighbors",
+    "approved",
+    "{{me}}",
+    "Stay with the group"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_curfew_manager__exception_requests (id, member_id, date, requested_time, reason, status, reviewed_by, reviewed_at, created_at) VALUES (?, ?, date('now','-27 days'), ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-29 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-30 days'))",
+   "params": [
+    "rq-19",
+    "{{me}}",
+    "22:00",
+    "Driver's ed night drive",
+    "approved",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_curfew_manager__exception_requests (id, member_id, date, requested_time, reason, status, reviewed_by, reviewed_at, created_at) VALUES (?, ?, date('now','-34 days'), ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-36 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-37 days'))",
+   "params": [
+    "rq-20",
+    "{{me}}",
+    "23:00",
+    "End of summer cookout",
+    "approved",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_curfew_manager__exception_requests (id, member_id, date, requested_time, reason, status, reviewed_by, reviewed_at, created_at) VALUES (?, ?, date('now','-41 days'), ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-43 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-44 days'))",
+   "params": [
+    "rq-21",
+    "{{me}}",
+    "22:30",
+    "County fair",
+    "approved",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_curfew_manager__exception_requests (id, member_id, date, requested_time, reason, status, reviewed_by, reviewed_at, review_note, created_at) VALUES (?, ?, date('now','-2 days'), ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-4 days'), ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-5 days'))",
+   "params": [
+    "rq-22",
+    "{{me}}",
+    "23:59",
+    "Midnight movie premiere",
+    "denied",
+    "{{me}}",
+    "Not on a school night"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_curfew_manager__exception_requests (id, member_id, date, requested_time, reason, status, reviewed_by, reviewed_at, review_note, created_at) VALUES (?, ?, date('now','-5 days'), ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-7 days'), ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-8 days'))",
+   "params": [
+    "rq-23",
+    "{{me}}",
+    "23:30",
+    "Hanging out at the diner",
+    "denied",
+    "{{me}}",
+    "Too late without a plan for a ride"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_curfew_manager__exception_requests (id, member_id, date, requested_time, reason, status, reviewed_by, reviewed_at, review_note, created_at) VALUES (?, ?, date('now','-9 days'), ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-11 days'), ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-12 days'))",
+   "params": [
+    "rq-24",
+    "{{me}}",
+    "23:00",
+    "Party at a house we do not know",
+    "denied",
+    "{{me}}",
+    "Need to talk to the parents first"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_curfew_manager__exception_requests (id, member_id, date, requested_time, reason, status, reviewed_by, reviewed_at, review_note, created_at) VALUES (?, ?, date('now','-12 days'), ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-14 days'), ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-15 days'))",
+   "params": [
+    "rq-25",
+    "{{me}}",
+    "22:45",
+    "Gaming tournament at Sam's",
+    "denied",
+    "{{me}}",
+    "Test the next morning"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_curfew_manager__exception_requests (id, member_id, date, requested_time, reason, status, reviewed_by, reviewed_at, created_at) VALUES (?, ?, date('now','-16 days'), ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-18 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-19 days'))",
+   "params": [
+    "rq-26",
+    "{{me}}",
+    "23:30",
+    "Late skate at the rink",
+    "denied",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_curfew_manager__exception_requests (id, member_id, date, requested_time, reason, status, reviewed_by, reviewed_at, review_note, created_at) VALUES (?, ?, date('now','-19 days'), ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-21 days'), ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-22 days'))",
+   "params": [
+    "rq-27",
+    "{{me}}",
+    "23:00",
+    "Drive to the lake with friends",
+    "denied",
+    "{{me}}",
+    "No night driving yet"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_curfew_manager__exception_requests (id, member_id, date, requested_time, reason, status, reviewed_by, reviewed_at, review_note, created_at) VALUES (?, ?, date('now','-24 days'), ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-26 days'), ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-27 days'))",
+   "params": [
+    "rq-28",
+    "{{me}}",
+    "23:59",
+    "Concert two towns over",
+    "denied",
+    "{{me}}",
+    "Too far on a weeknight"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_curfew_manager__exception_requests (id, member_id, date, requested_time, reason, status, reviewed_by, reviewed_at, created_at) VALUES (?, ?, date('now','-28 days'), ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-30 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-31 days'))",
+   "params": [
+    "rq-29",
+    "{{me}}",
+    "22:30",
+    "Mall until closing",
+    "denied",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_curfew_manager__exception_requests (id, member_id, date, requested_time, reason, status, reviewed_by, reviewed_at, review_note, created_at) VALUES (?, ?, date('now','+4 days'), ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-0 days'), ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-1 days'))",
+   "params": [
+    "rq-30",
+    "{{me}}",
+    "23:00",
+    "Bonfire at the beach",
+    "denied",
+    "{{me}}",
+    "Ask again with an adult who will be there"
+   ]
+  }
+ ]
+}
