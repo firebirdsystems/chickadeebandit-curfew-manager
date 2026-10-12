@@ -4,7 +4,7 @@ import {
   formatDate,
   getDayType,
   getCurfewForDate,
-  exceedsCurfew, searchableFields,
+  exceedsCurfew, searchableFields, reviewsRequests, hasNoChildren,
 } from "../src/logic.js";
 
 describe("formatTime", () => {
@@ -71,5 +71,39 @@ describe("searchableFields", () => {
     const fields = searchableFields({ reason: "concert finishes late", review_note: "ok, taxi home", date: "2026-03-04" });
     expect(fields).toContain("concert finishes late");
     expect(fields).toContain("ok, taxi home");
+  });
+});
+
+describe("reviewsRequests", () => {
+  const adult = { id: "a1", role: "adult" };
+  const child = { id: "c1", role: "child" };
+
+  it("any adult reviews in a household, which is the default", () => {
+    expect(reviewsRequests(adult)).toBe(true);
+    expect(reviewsRequests(child)).toBe(false);
+    expect(reviewsRequests(null)).toBe(false);
+  });
+
+  it("only the steward reviews in a shared space", () => {
+    expect(reviewsRequests(adult, { tenantKind: "shared_space", isAdmin: false })).toBe(false);
+    expect(reviewsRequests(adult, { tenantKind: "shared_space", isAdmin: true })).toBe(true);
+  });
+
+  it("being a household's admin does not make a child a reviewer", () => {
+    expect(reviewsRequests(child, { tenantKind: "household", isAdmin: true })).toBe(false);
+  });
+});
+
+describe("hasNoChildren", () => {
+  it("is true for a loaded list of adults only", () => {
+    expect(hasNoChildren([{ id: "a1", role: "adult" }, { id: "a2", role: "adult" }])).toBe(true);
+  });
+
+  it("is false once any member is not an adult", () => {
+    expect(hasNoChildren([{ id: "a1", role: "adult" }, { id: "c1", role: "child" }])).toBe(false);
+  });
+
+  it("is false for an empty list, which means the members did not load", () => {
+    expect(hasNoChildren([])).toBe(false);
   });
 });

@@ -345,6 +345,8 @@
 
     /* ── Misc ─────────────────────────────────────────────── */
     .empty { text-align: center; padding: 36px 16px; color: var(--muted); font-size: 0.9rem; }
+    .app-error { margin: 12px 0 0; padding: 10px 14px; border-radius: 10px; background: var(--red-light); color: var(--red); font-size: 0.88rem; }
+    .scope-note { margin: 0 0 14px; color: var(--muted); font-size: 0.85rem; }
     .loading { text-align: center; padding: 40px; color: var(--muted); }
     .section-title {
       font-size: 0.72rem;
@@ -362,6 +364,8 @@
       background: var(--surface, var(--card, #fff)); color: var(--text, inherit);
     }
     .search-input:focus { outline: none; border-color: var(--accent, #6366f1); }
+    .load-error { margin: 0 0 12px; padding: 10px 14px; border-radius: 10px; background: var(--hub-tint-danger, #fee2e2); color: var(--hub-tint-danger-fg, #b91c1c); font-size: 0.9rem; display: flex; gap: 10px; align-items: center; justify-content: space-between; }
+    .load-error-retry { background: none; border: 1px solid currentColor; border-radius: 8px; padding: 5px 10px; font: inherit; font-weight: 600; color: inherit; cursor: pointer; flex-shrink: 0; }
   </style>
   <base href="/run/curfew-manager/" />
 </head>
@@ -372,13 +376,17 @@
 
 <script type="module">
 import { memberColor, initial, esc, isAdult, hubConfirm, searchMatch, hubToday, glyph } from "/hub-sdk.js";
-import { formatTime, formatDate, getDayType, getCurfewForDate, exceedsCurfew, STATUS_INFO, searchableFields } from "./logic.js";
+import { formatTime, formatDate, getDayType, getCurfewForDate, exceedsCurfew, STATUS_INFO, searchableFields, reviewsRequests, hasNoChildren } from "./logic.js";
 
 const CONTEXT    = window.__CONTEXT_URL    ?? "";
 const DB         = window.__DB_URL         ?? "";
 const APP_ID     = window.__APP_ID         ?? "curfew-manager";
 const ME         = window.__CURRENT_MEMBER ?? null;
 const EVENTS_URL = window.__EVENTS_URL     ?? "/api/events";
+// Reviewing other members' requests: any adult in a household, and only the
+// steward in a shared space. The hub decides; this only keeps the page from
+// offering a review it would refuse.
+const REVIEWS = reviewsRequests(ME, { tenantKind: window.__TENANT_KIND ?? "household", isAdmin: window.__IS_ADMIN === true });
 
 // ─── State ────────────────────────────────────────────────────────────────────
 let members   = [];
@@ -407,7 +415,11 @@ async function db(sql, params = []) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ sql, params }),
   });
-  return res.json();
+  const json = await res.json().catch(() => null);
+  // A refusal is an answer too: without this a write the hub turned down read
+  // as a success, and the page went on to show a change that was never made.
+  if (!res.ok || !json || typeof json !== "object" || json.error) throw new Error(json?.error || "That could not be saved");
+  return json;
 }
 
 // ─── Load ──────────────────────────────────────────────────────────────────────
@@ -422,10 +434,13 @@ async function loadMembers() {
     memberMap = new Map(members.map(m => [m.id, m]));
     return;
   }
-  try {
-    const res = await fetch(`${CONTEXT}?keys=family.members`);
-    members = ((await res.json())["family.members"]) ?? [];
-  } catch { members = []; }
+  // A failed read throws: it is a failed load, never a household of nobody.
+  const res = await fetch(`${CONTEXT}?keys=family.members`);
+  const data = await res.json().catch(() => null);
+  if (!res.ok || data === null || typeof data !== "object" || Array.isArray(data)) throw new Error("Couldn’t reach the hub. Try again.");
+  // A 200 can still name a key the hub failed to read.
+  if (Array.isArray(data.$errors) && data.$errors.includes("family.members")) throw new Error("Couldn’t reach the hub. Try again.");
+  members = data["family.members"] ?? [];
   memberMap = new Map(members.map(m => [m.id, m]));
 }
 
@@ -444,8 +459,11 @@ async function loadCurfews() {
 
 async function loadRequests() {
   if (!DB || !ME) return;
+  // An adult who takes part in a shared space without stewarding it asks for
+  // no exceptions and may read nobody else's, so there is nothing to load.
+  if (isAdult(ME) && !REVIEWS) return;
   let rows;
-  if (isAdult(ME)) {
+  if (REVIEWS) {
     ({ rows } = await db(`
       SELECT * FROM app_curfew_manager__exception_requests
       WHERE status != 'denied' OR date >= date('now', '-30 days')
@@ -575,11 +593,12 @@ async function approveRequest(reqId, note) {
   const req = requests.find(r => r.id === reqId);
   if (!req || req.status !== "pending") return;
   const now = new Date().toISOString();
-  await db(`
+  const { changed } = await db(`
     UPDATE app_curfew_manager__exception_requests
     SET status = 'approved', reviewed_by = ?, reviewed_at = ?, review_note = ?
     WHERE id = ?
   `, [ME.id, now, note ?? "", reqId]);
+  if (changed === 0) throw new Error("This request could not be updated. Reload to see where it stands.");
 
   const idx = requests.findIndex(r => r.id === reqId);
   if (idx !== -1) requests[idx] = { ...requests[idx], status: "approved", reviewed_by: ME.id, reviewed_at: now, review_note: note ?? "" };
@@ -607,11 +626,12 @@ async function denyRequest(reqId, note) {
   const req = requests.find(r => r.id === reqId);
   if (!req || req.status !== "pending") return;
   const now = new Date().toISOString();
-  await db(`
+  const { changed } = await db(`
     UPDATE app_curfew_manager__exception_requests
     SET status = 'denied', reviewed_by = ?, reviewed_at = ?, review_note = ?
     WHERE id = ?
   `, [ME.id, now, note ?? "", reqId]);
+  if (changed === 0) throw new Error("This request could not be updated. Reload to see where it stands.");
 
   const idx = requests.findIndex(r => r.id === reqId);
   if (idx !== -1) requests[idx] = { ...requests[idx], status: "denied", reviewed_by: ME.id, reviewed_at: now, review_note: note ?? "" };
@@ -648,6 +668,17 @@ function openModal(html) {
   modalEl.querySelector("[data-autofocus]")?.focus();
 }
 function closeModal() { modalEl?.remove(); modalEl = null; }
+// A refused or failed save is reported inside the dialog that asked for it.
+function modalError(message) {
+  const box = modalEl?.querySelector(".modal");
+  if (!box) return;
+  box.querySelector(".app-error")?.remove();
+  const note = document.createElement("div");
+  note.className = "app-error";
+  note.setAttribute("role", "alert");
+  note.textContent = message || "Something went wrong. Please try again.";
+  box.appendChild(note);
+}
 
 // ─── Edit curfew modal ─────────────────────────────────────────────────────────
 function openEditCurfewModal(memberId) {
@@ -690,7 +721,7 @@ window.submitCurfewModal = async function(memberId) {
     render();
   } catch (e) {
     if (btn) { btn.disabled = false; btn.textContent = "Save"; }
-    throw e;
+    modalError(e.message);
   }
 };
 
@@ -758,7 +789,7 @@ window.submitExceptionModal = async function() {
     await submitExceptionRequest({ date, requested_time, reason });
   } catch (e) {
     if (btn) { btn.disabled = false; btn.textContent = "Submit Request"; }
-    throw e;
+    modalError(e.message);
   }
 };
 
@@ -799,9 +830,15 @@ window.submitDecision = async function(decision) {
   const reqId = decisionReqId;
   const note = document.getElementById("d-note").value.trim();
   const btn  = modalEl?.querySelector('.modal-actions button:not(.btn-ghost)');
+  const label = btn?.textContent;
   if (btn) { btn.disabled = true; btn.textContent = "Saving…"; }
-  if (decision === "approve") await approveRequest(reqId, note);
-  else                        await denyRequest(reqId, note);
+  try {
+    if (decision === "approve") await approveRequest(reqId, note);
+    else                        await denyRequest(reqId, note);
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = label; }
+    modalError(e.message);
+  }
 };
 
 // ─── Detail modal ──────────────────────────────────────────────────────────────
@@ -809,9 +846,8 @@ function openDetailModal(req) {
   detailReqId       = req.id;
   const child       = memberMap.get(req.member_id);
   const reviewer    = req.reviewed_by ? memberMap.get(req.reviewed_by) : null;
-  const meIsAdult   = isAdult(ME);
   const isMyRequest = ME?.id === req.member_id;
-  const canDecide   = req.status === "pending" && meIsAdult;
+  const canDecide   = req.status === "pending" && REVIEWS;
 
   const dateLabel = formatDate(req.date);
   const timeLabel = formatTime(req.requested_time);
@@ -869,8 +905,8 @@ function openDetailModal(req) {
 
     <div class="modal-actions">
       ${canDecide ? `
-        <button class="btn btn-success" onclick="openDecision_('approve')">${glyph("tick", { accent: "currentColor" })} Approve</button>
-        <button class="btn btn-danger"  onclick="openDecision_('deny')">${glyph("close", { accent: "currentColor" })} Deny</button>
+        <button class="btn btn-success" onclick="openDecision_('approve')" data-testid="approve-request">${glyph("tick", { accent: "currentColor" })} Approve</button>
+        <button class="btn btn-danger"  onclick="openDecision_('deny')" data-testid="deny-request">${glyph("close", { accent: "currentColor" })} Deny</button>
       ` : ""}
       <button class="btn btn-ghost" onclick="closeModal()">Close</button>
     </div>
@@ -889,13 +925,13 @@ window.closeModal = closeModal;
 function renderRequestCard(req) {
   const child       = memberMap.get(req.member_id);
   const meIsAdult   = isAdult(ME);
-  const needsAction = req.status === "pending" && meIsAdult;
+  const needsAction = req.status === "pending" && REVIEWS;
   const dateLabel   = formatDate(req.date);
   const timeLabel   = formatTime(req.requested_time);
 
   return `
     <div class="request-card ${needsAction ? "needs-action" : ""}"
-      data-detail-id="${esc(req.id)}">
+      data-detail-id="${esc(req.id)}" data-testid="request-card" data-request-id="${esc(req.id)}">
       <div class="request-main">
         <div class="request-title">${esc(dateLabel)} until ${esc(timeLabel)}</div>
         ${meIsAdult ? `
@@ -908,11 +944,16 @@ function renderRequestCard(req) {
       </div>
       <div class="request-right">
         ${statusHtml(req.status)}
-        ${needsAction ? `<div class="action-needed">Needs review</div>` : ""}
+        ${needsAction ? `<div class="action-needed" data-testid="needs-review">Needs review</div>` : ""}
       </div>
     </div>
   `;
 }
+
+// Set when the first load fails, cleared when a load succeeds. While set the
+// page shows its header and the banner only, so empty lists are not taken for
+// "nothing here".
+let loadFailed = false;
 
 function render() {
   if (!ME) {
@@ -920,33 +961,47 @@ function render() {
       `<div class="empty">Please log in to use Curfew Manager.</div>`;
     return;
   }
+  if (loadFailed) {
+    document.getElementById("root").innerHTML = `
+      <header>
+        <div>
+          <h1>${glyph("moon")} ${isAdult(ME) ? "Curfew Manager" : "My Curfew"}</h1>
+        </div>
+      </header>
+      <div class="load-error" data-testid="load-error" role="alert"><span>Couldn’t load curfews.</span> <button type="button" class="load-error-retry" data-testid="load-retry">Try again</button></div>`;
+    return;
+  }
   if (isAdult(ME)) renderAdultView();
   else             renderChildView();
 }
 
+const NO_CHILDREN_NOTE = "Curfews are set for child members, and there are none here yet. Add a child member to set a curfew and review their requests.";
+
 function renderAdultView() {
   const pending  = requests.filter(r => r.status === "pending");
-  const resolved = requests.filter(r => r.status !== "pending");
+  // Only a reviewer has requests to look at; any other adult keeps the
+  // schedule, which every adult may read and set.
+  if (!REVIEWS) activeTab = "schedule";
 
   document.getElementById("root").innerHTML = `
     <header>
       <div>
         <h1>${glyph("moon")} Curfew Manager</h1>
-        <div class="sub">Set schedules and review exceptions</div>
+        <div class="sub">${REVIEWS ? "Set schedules and review exceptions" : "Set curfew schedules"}</div>
       </div>
     </header>
 
-    <div class="tabs">
-      <button class="tab ${activeTab === "requests" ? "active" : ""}" onclick="setTab('requests')">
+    ${REVIEWS ? `<div class="tabs" data-testid="tabs">
+      <button class="tab ${activeTab === "requests" ? "active" : ""}" onclick="setTab('requests')" data-testid="tab" data-tab="requests">
         Requests
         ${pending.length > 0 ? `<span class="tab-badge">${pending.length}</span>` : ""}
       </button>
-      <button class="tab ${activeTab === "schedule" ? "active" : ""}" onclick="setTab('schedule')">
+      <button class="tab ${activeTab === "schedule" ? "active" : ""}" onclick="setTab('schedule')" data-testid="tab" data-tab="schedule">
         Schedule
       </button>
-    </div>
+    </div>` : hasNoChildren(members) ? "" : `<p class="scope-note" data-testid="scope-note">In a shared space, the steward reviews exception requests.</p>`}
 
-    <div id="tab-content"></div>
+    <div id="tab-content" data-testid="tab-content"></div>
   `;
 
   renderAdultTabContent();
@@ -972,7 +1027,7 @@ function renderAdultTabContent() {
     const pendingHtml = pending.length === 0
       ? (searchQ && resolved.length === 0
         ? `<div class="empty" style="padding:24px 0">No requests match "${esc(searchQ)}".</div>`
-        : `<div class="empty" style="padding:24px 0">No pending requests.</div>`)
+        : `<div class="empty" style="padding:24px 0" data-testid="${!requests.length && hasNoChildren(members) ? "no-children-note" : "requests-empty"}">${!requests.length && hasNoChildren(members) ? NO_CHILDREN_NOTE : "No pending requests."}</div>`)
       : pending.map(r => renderRequestCard(r)).join("");
 
     const resolvedHtml = resolved.length > 0
@@ -992,7 +1047,7 @@ function renderAdultTabContent() {
   if (activeTab === "schedule") {
     const childMembers = kids();
     if (childMembers.length === 0) {
-      el.innerHTML = `<div class="empty">No children in your household yet.</div>`;
+      el.innerHTML = `<div class="empty" data-testid="${hasNoChildren(members) ? "no-children-note" : "schedule-empty"}">${hasNoChildren(members) ? NO_CHILDREN_NOTE : "No children here yet."}</div>`;
       return;
     }
 
@@ -1091,11 +1146,18 @@ function handleDeepLink() {
 }
 
 // ─── Init ──────────────────────────────────────────────────────────────────────
-(async () => {
-  await Promise.all([loadMembers(), loadCurfews(), loadRequests()]);
+async function firstLoad() {
+  let failed = false;
+  const fail = () => { failed = true; };
+  await Promise.all([loadMembers().catch(fail), loadCurfews().catch(fail), loadRequests().catch(fail)]);
+  loadFailed = failed;
   render();
-  handleDeepLink();
-})();
+  if (!loadFailed) handleDeepLink();
+}
+document.addEventListener("click", (e) => {
+  if (e.target.closest('[data-testid="load-retry"]')) firstLoad();
+});
+firstLoad();
 </script>
 </body>
 </html>

@@ -1,4 +1,5 @@
-export { isAdult } from "./shared.js";
+import { isAdult } from "./shared.js";
+export { isAdult };
 
 /**
  * Format a 24-hour time string to 12-hour display.
@@ -70,4 +71,23 @@ export const STATUS_INFO = {
  */
 export function searchableFields(item) {
   return [item.reason, item.review_note, item.date];
+}
+
+/**
+ * Whether a member reviews other members' exception requests. Mirrors the
+ * hub's rule for the exception_requests table: any adult in a household, and
+ * only the steward in a shared space. An adult who merely takes part in a
+ * space reads nobody else's requests and may not answer them.
+ */
+export function reviewsRequests(member, { tenantKind = "household", isAdmin = false } = {}) {
+  return tenantKind === "household" ? isAdult(member) : isAdmin === true;
+}
+
+/**
+ * True when the member list loaded and holds no child. Curfews are set for
+ * children, so without one there is nothing to schedule or review. An empty
+ * list means the members could not be read, which says nothing either way.
+ */
+export function hasNoChildren(members) {
+  return members.length > 0 && !members.some(m => !isAdult(m));
 }

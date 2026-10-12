@@ -1,0 +1,169 @@
+{
+  "scenarios": [
+    {
+      "name": "in a shared space with no children both adults are told so; only the steward gets the Requests tab and the approve and deny buttons",
+      "context": "shared_space",
+      "members": {
+        "steward": "admin",
+        "pat": "adult",
+        "sam": "adult"
+      },
+      "steps": [
+        {
+          "action": "open",
+          "as": "pat"
+        },
+        {
+          "action": "expectVisible",
+          "as": "pat",
+          "selector": "[data-testid=\"no-children-note\"]"
+        },
+        {
+          "action": "expectText",
+          "as": "pat",
+          "selector": "[data-testid=\"no-children-note\"]",
+          "text": "Curfews are set for child members, and there are none here yet."
+        },
+        {
+          "action": "expectCount",
+          "as": "pat",
+          "selector": "[data-testid=\"tabs\"]",
+          "count": 0
+        },
+        {
+          "action": "expectCount",
+          "as": "pat",
+          "selector": "[data-testid=\"tab\"][data-tab=\"requests\"]",
+          "count": 0
+        },
+        {
+          "action": "expectCount",
+          "as": "pat",
+          "selector": "[data-testid=\"scope-note\"]",
+          "count": 0
+        },
+        {
+          "action": "open",
+          "as": "steward"
+        },
+        {
+          "action": "expectVisible",
+          "as": "steward",
+          "selector": "[data-testid=\"tab\"][data-tab=\"requests\"]"
+        },
+        {
+          "action": "expectVisible",
+          "as": "steward",
+          "selector": "[data-testid=\"no-children-note\"]"
+        },
+        {
+          "action": "expectText",
+          "as": "steward",
+          "selector": "[data-testid=\"no-children-note\"]",
+          "text": "Curfews are set for child members, and there are none here yet."
+        },
+        {
+          "action": "seedRaw",
+          "sql": "INSERT INTO app_curfew_manager__exception_requests (id, member_id, date, requested_time, reason, status, created_at) VALUES ('req-pat', ?, '2026-01-10', '23:00', ?, 'pending', ?), ('req-sam', ?, '2026-01-11', '22:30', ?, 'pending', ?)",
+          "params": [
+            "{{pat}}",
+            "Late film",
+            "2026-01-05T00:00:00Z",
+            "{{sam}}",
+            "Team dinner",
+            "2026-01-05T00:00:00Z"
+          ]
+        },
+        {
+          "action": "reload",
+          "as": "steward"
+        },
+        {
+          "action": "expectVisible",
+          "as": "steward",
+          "selector": "[data-testid=\"request-card\"][data-request-id=\"req-pat\"]"
+        },
+        {
+          "action": "expectCount",
+          "as": "steward",
+          "selector": "[data-testid=\"request-card\"]",
+          "count": 2
+        },
+        {
+          "action": "expectCount",
+          "as": "steward",
+          "selector": "[data-testid=\"needs-review\"]",
+          "count": 2
+        },
+        {
+          "action": "expectCount",
+          "as": "steward",
+          "selector": "[data-testid=\"no-children-note\"]",
+          "count": 0
+        },
+        {
+          "action": "click",
+          "as": "steward",
+          "selector": "[data-testid=\"request-card\"][data-request-id=\"req-pat\"]"
+        },
+        {
+          "action": "expectVisible",
+          "as": "steward",
+          "selector": "[data-testid=\"approve-request\"]"
+        },
+        {
+          "action": "expectVisible",
+          "as": "steward",
+          "selector": "[data-testid=\"deny-request\"]"
+        },
+        {
+          "action": "reload",
+          "as": "steward"
+        },
+        {
+          "action": "expectVisible",
+          "as": "steward",
+          "selector": "[data-testid=\"tab\"][data-tab=\"schedule\"]"
+        },
+        {
+          "action": "click",
+          "as": "steward",
+          "selector": "[data-testid=\"tab\"][data-tab=\"schedule\"]"
+        },
+        {
+          "action": "expectText",
+          "as": "steward",
+          "selector": "[data-testid=\"no-children-note\"]",
+          "text": "Add a child member to set a curfew and review their requests."
+        },
+        {
+          "action": "reload",
+          "as": "pat"
+        },
+        {
+          "action": "expectVisible",
+          "as": "pat",
+          "selector": "[data-testid=\"no-children-note\"]"
+        },
+        {
+          "action": "expectCount",
+          "as": "pat",
+          "selector": "[data-testid=\"tabs\"]",
+          "count": 0
+        },
+        {
+          "action": "expectCount",
+          "as": "pat",
+          "selector": "[data-testid=\"request-card\"]",
+          "count": 0
+        },
+        {
+          "action": "expectCount",
+          "as": "pat",
+          "selector": "[data-testid=\"needs-review\"]",
+          "count": 0
+        }
+      ]
+    }
+  ]
+}
