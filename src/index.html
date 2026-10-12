@@ -598,7 +598,7 @@ async function approveRequest(reqId, note) {
     SET status = 'approved', reviewed_by = ?, reviewed_at = ?, review_note = ?
     WHERE id = ?
   `, [ME.id, now, note ?? "", reqId]);
-  if (changed === 0) throw new Error("This request could not be updated. Reload to see where it stands.");
+  if (changed === 0) throw Object.assign(new Error("This request could not be updated. Reload to see where it stands."), { forUser: true });
 
   const idx = requests.findIndex(r => r.id === reqId);
   if (idx !== -1) requests[idx] = { ...requests[idx], status: "approved", reviewed_by: ME.id, reviewed_at: now, review_note: note ?? "" };
@@ -631,7 +631,7 @@ async function denyRequest(reqId, note) {
     SET status = 'denied', reviewed_by = ?, reviewed_at = ?, review_note = ?
     WHERE id = ?
   `, [ME.id, now, note ?? "", reqId]);
-  if (changed === 0) throw new Error("This request could not be updated. Reload to see where it stands.");
+  if (changed === 0) throw Object.assign(new Error("This request could not be updated. Reload to see where it stands."), { forUser: true });
 
   const idx = requests.findIndex(r => r.id === reqId);
   if (idx !== -1) requests[idx] = { ...requests[idx], status: "denied", reviewed_by: ME.id, reviewed_at: now, review_note: note ?? "" };
@@ -669,6 +669,8 @@ function openModal(html) {
 }
 function closeModal() { modalEl?.remove(); modalEl = null; }
 // A refused or failed save is reported inside the dialog that asked for it.
+// Only wording this app wrote for the reader is shown; a hub error is logged.
+function failText(e, line) { if (!e?.forUser) if (!e?.forUser) console.error(e); return e?.forUser ? e.message : line; }
 function modalError(message) {
   const box = modalEl?.querySelector(".modal");
   if (!box) return;
@@ -721,7 +723,7 @@ window.submitCurfewModal = async function(memberId) {
     render();
   } catch (e) {
     if (btn) { btn.disabled = false; btn.textContent = "Save"; }
-    modalError(e.message);
+    modalError(failText(e, "Couldn’t save the curfew — try again."));
   }
 };
 
@@ -789,7 +791,7 @@ window.submitExceptionModal = async function() {
     await submitExceptionRequest({ date, requested_time, reason });
   } catch (e) {
     if (btn) { btn.disabled = false; btn.textContent = "Submit Request"; }
-    modalError(e.message);
+    modalError(failText(e, "Couldn’t send the request — try again."));
   }
 };
 
@@ -837,7 +839,7 @@ window.submitDecision = async function(decision) {
     else                        await denyRequest(reqId, note);
   } catch (e) {
     if (btn) { btn.disabled = false; btn.textContent = label; }
-    modalError(e.message);
+    modalError(failText(e, "Couldn’t save the decision — try again."));
   }
 };
 
