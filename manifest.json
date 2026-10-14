@@ -43,12 +43,14 @@
     "exception_requests": {
       "kind": "owner_only",
       "member_column": "member_id",
-      "member_can_update": false,
-      "retain_days": {
-        "default": 365,
-        "timestamp_column": "created_at",
-        "override_key": "exception_history"
-      }
+      "member_can_update": false
+    }
+  },
+  "retention": {
+    "exception_requests": {
+      "default": 365,
+      "timestamp_column": "created_at",
+      "override_key": "exception_history"
     }
   },
   "member_references": {
@@ -83,9 +85,6 @@
     "curfew.exception_denied": { "require_role": "adult" }
   },
   "nav": { "label": "Curfew" },
-  "resource_limits": {
-    "max_db_bytes": 52428800
-  },
   "icon": "🌙",
   "ai_access": {
     "allowed": true,
