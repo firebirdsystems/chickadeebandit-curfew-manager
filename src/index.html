@@ -375,8 +375,8 @@
 </div>
 
 <script type="module">
-import { memberColor, initial, esc, isAdult, hubConfirm, searchMatch, hubToday, glyph } from "/hub-sdk.js";
-import { formatTime, formatDate, getDayType, getCurfewForDate, exceedsCurfew, STATUS_INFO, searchableFields, reviewsRequests, hasNoChildren } from "./logic.js";
+import { memberColor, initial, esc, isAdult, hubConfirm, hubAlert, searchMatch, hubToday, glyph } from "/hub-sdk.js";
+import { formatTime, formatDate, getDayType, getCurfewForDate, exceedsCurfew, STATUS_INFO, searchableFields, reviewsRequests, hasNoChildren, outcomeUnknown, storedDiffers, SAVED_AS_FIRST, failureLine } from "./logic.js";
 
 const CONTEXT    = window.__CONTEXT_URL    ?? "";
 const DB         = window.__DB_URL         ?? "";
@@ -418,7 +418,7 @@ async function db(sql, params = []) {
   const json = await res.json().catch(() => null);
   // A refusal is an answer too: without this a write the hub turned down read
   // as a success, and the page went on to show a change that was never made.
-  if (!res.ok || !json || typeof json !== "object" || json.error) throw new Error(json?.error || "That could not be saved");
+  if (!res.ok || !json || typeof json !== "object" || json.error) throw Object.assign(new Error(json?.error || "That could not be saved"), { status: res.status, code: json?.code });
   return json;
 }
 
@@ -522,6 +522,17 @@ async function publishEvent(type, subjectId, payload = {}) {
 }
 
 // ─── Actions ──────────────────────────────────────────────────────────────────
+// The re-read after a curfew write that changed nothing: the stored row, or
+// null. A failed read throws with `found: null`, so the line is "try again".
+async function curfewUnchanged(memberId, dayType) {
+  try {
+    return (await db(`SELECT curfew_time FROM app_curfew_manager__curfews WHERE member_id = ? AND day_type = ?`, [memberId, dayType])).rows?.[0] ?? null;
+  } catch (readErr) {
+    console.error(readErr);
+    throw Object.assign(new Error("curfew unchanged"), { found: null });
+  }
+}
+
 async function saveCurfew(memberId, dayType, curfewTime) {
   const now = new Date().toISOString();
   if (curfewTime) {
@@ -531,37 +542,75 @@ async function saveCurfew(memberId, dayType, curfewTime) {
     // never fired, and every save inserted a SECOND row instead of updating.
     // The list below then read the older row back and the change appeared to
     // revert on reload. Same reason the DELETE and the agenda both match on it.
-    await db(`
+    const res = await db(`
       INSERT INTO app_curfew_manager__curfews (member_id, day_type, curfew_time, updated_at)
       VALUES (?, ?, ?, ?)
       ON CONFLICT (member_id, day_type)
       DO UPDATE SET curfew_time = excluded.curfew_time, updated_at = excluded.updated_at
     `, [memberId, dayType, curfewTime, now]);
+    // 200 with nothing changed: the row policy refused it, unless the stored
+    // curfew already says the same.
+    if (Number(res?.changed ?? 1) === 0) {
+      const row = await curfewUnchanged(memberId, dayType);
+      if (row?.curfew_time !== curfewTime) throw Object.assign(new Error("curfew unchanged"), { found: true });
+    }
     const idx = curfews.findIndex(c => c.member_id === memberId && c.day_type === dayType);
     if (idx >= 0) curfews[idx] = { member_id: memberId, day_type: dayType, curfew_time: curfewTime };
     else curfews.push({ member_id: memberId, day_type: dayType, curfew_time: curfewTime });
   } else {
-    await db(`DELETE FROM app_curfew_manager__curfews WHERE member_id = ? AND day_type = ?`, [memberId, dayType]);
+    const res = await db(`DELETE FROM app_curfew_manager__curfews WHERE member_id = ? AND day_type = ?`, [memberId, dayType]);
+    // Nothing deleted: fine when there was no curfew; one still there was refused.
+    if (Number(res?.changed ?? 1) === 0 && await curfewUnchanged(memberId, dayType)) {
+      throw Object.assign(new Error("curfew unchanged"), { found: true });
+    }
     curfews = curfews.filter(c => !(c.member_id === memberId && c.day_type === dayType));
   }
 }
 
-async function submitExceptionRequest(fields) {
-  const id  = crypto.randomUUID();
-  const now = new Date().toISOString();
-  await db(`
-    INSERT INTO app_curfew_manager__exception_requests
-      (id, member_id, date, requested_time, reason, status, created_at)
-    VALUES (?, ?, ?, ?, ?, 'pending', ?)
-  `, [id, ME.id, fields.date, fields.requested_time, fields.reason ?? "", now]);
+async function submitExceptionRequest(fields, pinHost = null) {
+  // The id is the form's, minted on its first Submit and sent on every retry:
+  // a try whose answer was lost may have stored the request, and a second
+  // press must find it rather than ask (and notify the adults) twice.
+  const id  = pinHost ? (pinHost.dataset.rowId ||= crypto.randomUUID()) : crypto.randomUUID();
+  let now = new Date().toISOString();
+  let note = "";
+  try {
+    await db(`
+      INSERT INTO app_curfew_manager__exception_requests
+        (id, member_id, date, requested_time, reason, status, created_at)
+      VALUES (?, ?, ?, ?, ?, 'pending', ?)
+    `, [id, ME.id, fields.date, fields.requested_time, fields.reason ?? "", now]);
+  } catch (e) {
+    // Unknown outcome: read the request back by the pinned id. Found means an
+    // earlier try landed and its success path never ran, so it runs now, once.
+    // Not found, or the read failed: the submit fails, the id stays pinned.
+    if (!outcomeUnknown(e)) throw e;
+    let stored = null;
+    try {
+      stored = (await db(`SELECT date, requested_time, reason, created_at FROM app_curfew_manager__exception_requests WHERE id = ?`, [id])).rows?.[0] ?? null;
+    } catch (readErr) {
+      // The id is ours: with the read-back failed, a UNIQUE answer may be this
+      // form's own first try, so nothing is known — "try again", not "already exists".
+      console.error(readErr);
+      throw new Error("request outcome unknown", { cause: e });
+    }
+    if (!stored) throw e;
+    console.error(e);
+    // Edited since that first try: what was stored is kept, and said so.
+    if (storedDiffers(stored, { date: fields.date, requested_time: fields.requested_time, reason: fields.reason ?? "" })) note = SAVED_AS_FIRST;
+    fields = { date: stored.date, requested_time: stored.requested_time, reason: stored.reason ?? "" };
+    now = stored.created_at || now;
+  }
+  if (pinHost) delete pinHost.dataset.rowId;
 
   requests = [{
     id, member_id: ME.id, date: fields.date, requested_time: fields.requested_time,
     reason: fields.reason ?? "", status: "pending",
     reviewed_by: null, reviewed_at: null, review_note: null, created_at: now,
-  }, ...requests];
+  }, ...requests.filter(r => r.id !== id)];
   closeModal();
   render();
+  if (note) hubAlert(note);
 
   const dateLabel = formatDate(fields.date);
   const timeLabel = formatTime(fields.requested_time);
@@ -589,6 +638,19 @@ async function submitExceptionRequest(fields) {
   ]).catch(() => {});
 }
 
+// A decision that changed nothing: re-read the request, and word the line by
+// what is there (a plain `WHERE id = ?`, so a row still present was refused).
+async function unchangedRequest(reqId, words) {
+  let found = null;
+  try {
+    found = ((await db(`SELECT id FROM app_curfew_manager__exception_requests WHERE id = ?`, [reqId])).rows?.length ?? 0) > 0;
+  } catch (readErr) { console.error(readErr); }
+  return Object.assign(new Error(failureLine(null, { ...words, found })), { forUser: true });
+}
+function decisionWords(decision) {
+  return { action: decision === "approve" ? "approve the request" : "deny the request", thing: "request" };
+}
+
 async function approveRequest(reqId, note) {
   const req = requests.find(r => r.id === reqId);
   if (!req || req.status !== "pending") return;
@@ -598,7 +660,7 @@ async function approveRequest(reqId, note) {
     SET status = 'approved', reviewed_by = ?, reviewed_at = ?, review_note = ?
     WHERE id = ?
   `, [ME.id, now, note ?? "", reqId]);
-  if (changed === 0) throw Object.assign(new Error("This request could not be updated. Reload to see where it stands."), { forUser: true });
+  if (changed === 0) throw await unchangedRequest(reqId, decisionWords("approve"));
 
   const idx = requests.findIndex(r => r.id === reqId);
   if (idx !== -1) requests[idx] = { ...requests[idx], status: "approved", reviewed_by: ME.id, reviewed_at: now, review_note: note ?? "" };
@@ -631,7 +693,7 @@ async function denyRequest(reqId, note) {
     SET status = 'denied', reviewed_by = ?, reviewed_at = ?, review_note = ?
     WHERE id = ?
   `, [ME.id, now, note ?? "", reqId]);
-  if (changed === 0) throw Object.assign(new Error("This request could not be updated. Reload to see where it stands."), { forUser: true });
+  if (changed === 0) throw await unchangedRequest(reqId, decisionWords("deny"));
 
   const idx = requests.findIndex(r => r.id === reqId);
   if (idx !== -1) requests[idx] = { ...requests[idx], status: "denied", reviewed_by: ME.id, reviewed_at: now, review_note: note ?? "" };
@@ -668,9 +730,9 @@ function openModal(html) {
   modalEl.querySelector("[data-autofocus]")?.focus();
 }
 function closeModal() { modalEl?.remove(); modalEl = null; }
-// A refused or failed save is reported inside the dialog that asked for it.
-// Only wording this app wrote for the reader is shown; a hub error is logged.
-function failText(e, line) { if (!e?.forUser) if (!e?.forUser) console.error(e); return e?.forUser ? e.message : line; }
+// A refused or failed save is reported inside the dialog that asked for it,
+// worded by failureLine; the hub's error is logged, never shown.
+function failText(e, words) { if (!e?.forUser) console.error(e); return failureLine(e, words); }
 function modalError(message) {
   const box = modalEl?.querySelector(".modal");
   if (!box) return;
@@ -723,7 +785,7 @@ window.submitCurfewModal = async function(memberId) {
     render();
   } catch (e) {
     if (btn) { btn.disabled = false; btn.textContent = "Save"; }
-    modalError(failText(e, "Couldn’t save the curfew — try again."));
+    modalError(failText(e, { action: "save the curfew", thing: "curfew", found: e?.found }));
   }
 };
 
@@ -788,10 +850,10 @@ window.submitExceptionModal = async function() {
   if (btn) { btn.disabled = true; btn.textContent = "Submitting…"; }
 
   try {
-    await submitExceptionRequest({ date, requested_time, reason });
+    await submitExceptionRequest({ date, requested_time, reason }, modalEl);
   } catch (e) {
     if (btn) { btn.disabled = false; btn.textContent = "Submit Request"; }
-    modalError(failText(e, "Couldn’t send the request — try again."));
+    modalError(failText(e, { action: "send the request", thing: "request" }));
   }
 };
 
@@ -839,7 +901,7 @@ window.submitDecision = async function(decision) {
     else                        await denyRequest(reqId, note);
   } catch (e) {
     if (btn) { btn.disabled = false; btn.textContent = label; }
-    modalError(failText(e, "Couldn’t save the decision — try again."));
+    modalError(failText(e, decisionWords(decision)));
   }
 };
 
